@@ -3,9 +3,9 @@ export default defineAppConfig({
     'pages/index/index'
   ],
   window: {
-    backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: 'WeChat',
-    navigationBarTextStyle: 'black'
+    backgroundTextStyle: 'dark',
+    navigationBarBackgroundColor: '#0a0a0f',
+    navigationBarTitleText: '记忆典当行',
+    navigationBarTextStyle: 'white'
   }
 })

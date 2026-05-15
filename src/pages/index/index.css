@@ -1,1 +1,292 @@
-/* 优先使用 tailwindcss，如无必要请不要使用css */
+/* 记忆典当行 - 游戏动画与特效样式 */
+
+/* 记忆球辉光脉冲 */
+@keyframes orb-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--orb-color, #4488ff), 0 0 40px var(--orb-color, #4488ff), 0 0 60px var(--orb-color, #4488ff);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 30px var(--orb-color, #4488ff), 0 0 60px var(--orb-color, #4488ff), 0 0 90px var(--orb-color, #4488ff);
+    transform: scale(1.05);
+  }
+}
+
+/* 记忆球内部流动 */
+@keyframes orb-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 杂质脉动 */
+@keyframes impurity-pulse {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* 杂质消除动画 */
+@keyframes impurity-remove {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* 霓虹闪烁 */
+@keyframes neon-flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow: 0 0 7px var(--neon-color, #00f0ff), 0 0 10px var(--neon-color, #00f0ff), 0 0 21px var(--neon-color, #00f0ff);
+    opacity: 1;
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+    opacity: 0.8;
+  }
+}
+
+/* 扫描线 */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* 故障效果 */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+/* 打字机光标 */
+@keyframes cursor-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* 呼吸灯 */
+@keyframes breathe {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 进入动画 */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 滑入 */
+@keyframes slide-in-right {
+  0% {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 渐显 */
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* 心跳缩放 */
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.1);
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.1);
+  }
+  56% {
+    transform: scale(1);
+  }
+}
+
+/* 应用类名 */
+.orb-glow {
+  animation: orb-pulse 3s ease-in-out infinite;
+}
+
+.orb-flow-bg {
+  background-size: 200% 200%;
+  animation: orb-flow 4s ease infinite;
+}
+
+.impurity-alive {
+  animation: impurity-pulse 1.5s ease-in-out infinite;
+}
+
+.impurity-dying {
+  animation: impurity-remove 0.4s ease-out forwards;
+}
+
+.neon-text {
+  animation: neon-flicker 3s infinite;
+}
+
+.glitch-text {
+  animation: glitch 0.3s ease-in-out;
+}
+
+.breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.heartbeat {
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.5s ease-out;
+}
+
+.slide-in-right {
+  animation: slide-in-right 0.4s ease-out;
+}
+
+.fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* 扫描线覆盖层 */
+.scanline-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline-overlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(transparent, rgba(0, 240, 255, 0.05), transparent);
+  animation: scanline 4s linear infinite;
+  pointer-events: none;
+}
+
+/* 微表情指示器 */
+.micro-expression {
+  border-left: 3px solid #ffaa00;
+  padding-left: 8px;
+  animation: fade-in-up 0.5s ease-out;
+}
+
+/* 频谱条动画 */
+.spectrum-bar {
+  transition: width 0.3s ease-out;
+}
+
+/* 对话选项悬停效果 */
+.dialog-choice {
+  transition: all 0.2s ease;
+  border: 1px solid #2a2a40;
+}
+
+.dialog-choice:active {
+  border-color: #00f0ff;
+  background-color: rgba(0, 240, 255, 0.1);
+}
+
+/* 暗角效果 */
+.vignette {
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.6);
+}
+
+/* 霓虹边框 */
+.neon-border {
+  border: 1px solid #00f0ff;
+  box-shadow: 0 0 5px rgba(0, 240, 255, 0.3), inset 0 0 5px rgba(0, 240, 255, 0.1);
+}
+
+/* 记忆卡片 */
+.memory-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.memory-card:active {
+  transform: scale(0.97);
+}
+
+/* 自定义滚动条（H5） */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a40;
+  border-radius: 2px;
+}

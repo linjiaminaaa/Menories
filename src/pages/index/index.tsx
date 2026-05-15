@@ -1,33 +1,48 @@
-import { View, Text, Image } from '@tarojs/components';
-import { useLoad } from '@tarojs/taro';
-import { Network } from '@/network';
-import './index.css';
+import { View } from '@tarojs/components'
+import { useGameStore } from '@/store/game-store'
+import { HubScreen } from '@/components/game/hub-screen'
+import { DialogScreen } from '@/components/game/dialog-screen'
+import { AppraisalScreen } from '@/components/game/appraisal-screen'
+import { TradingScreen } from '@/components/game/trading-screen'
+import { ResultScreen } from '@/components/game/result-screen'
+import { StorageScreen } from '@/components/game/storage-screen'
+import './index.css'
 
-/**
- * 默认首页，直接覆盖本页内容
- */
-const IndexPage = () => {
-  useLoad(async () => {
-    const res = await Network.request({ url: '/api/hello' });
-    console.log(res.data);
-  });
+export default function Index() {
+  const phase = useGameStore((s) => s.phase)
+  const removeFromInventory = useGameStore((s) => s.removeFromInventory)
+  const applyFixative = useGameStore((s) => s.applyFixative)
+  const returnToHub = useGameStore((s) => s.returnToHub)
+  const addLog = useGameStore((s) => s.addLog)
+  const inventory = useGameStore((s) => s.inventory)
+
+  const handleSellMemory = (id: string) => {
+    const mem = inventory.find((m) => m.id === id)
+    if (mem) {
+      const sellPrice = Math.round(mem.basePrice * (mem.purity / 100) * (mem.completeness / 100) * mem.rarity * 0.6)
+      removeFromInventory(id)
+      addLog(`出售了「${mem.name}」，获得 ${sellPrice} 元`, 'success')
+    }
+  }
+
+  const handleApplyFixative = (id: string) => {
+    applyFixative(id)
+  }
 
   return (
-    <View className="w-full h-full flex flex-col justify-center items-center gap-1">
-      <Image
-        className="w-32 h-28"
-        src="https://lf-coze-web-cdn.coze.cn/obj/eden-cn/lm-lgvj/ljhwZthlaukjlkulzlp/coze-coding/icon/coze-coding.gif"
-      />
-      <View className="self-stretch flex flex-col justify-start items-start gap-2">
-        <Text className="self-stretch text-center justify-start text-base-accent-foreground text-base font-bold">
-          应用开发中
-        </Text>
-        <Text className="self-stretch text-center justify-start text-base-muted-foreground text-sm font-normal">
-          请稍候，界面即将呈现
-        </Text>
-      </View>
+    <View className="game-container">
+      {phase === 'hub' && <HubScreen />}
+      {phase === 'dialog' && <DialogScreen />}
+      {phase === 'appraisal' && <AppraisalScreen />}
+      {phase === 'trading' && <TradingScreen />}
+      {phase === 'result' && <ResultScreen />}
+      {phase === 'storage' && (
+        <StorageScreen
+          onSellMemory={handleSellMemory}
+          onApplyFixative={handleApplyFixative}
+          onClose={returnToHub}
+        />
+      )}
     </View>
-  );
-};
-
-export default IndexPage;
+  )
+}
