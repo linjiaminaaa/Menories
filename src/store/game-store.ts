@@ -98,13 +98,14 @@ interface GameState {
   dialogIndex: number
   revealedTruth: boolean
 
-  // 鉴定状态 - 共鸣舱
-  resonanceShellTotal: number
-  resonanceShellRemaining: number
-  resonanceCombo: number
-  resonanceHits: number
-  resonanceNoiseHits: number
-  resonancePhase: 'idle' | 'pulsing' | 'complete'
+  // 鉴定状态 - 碎片拼图
+  puzzleGrid: number[][]        // 当前排列，0=空位
+  puzzleSize: number            // 网格大小 (3)
+  puzzleRound: number           // 当前轮次 (1~shellTotal)
+  puzzleShellTotal: number      // 总外壳层数
+  puzzleShellRemaining: number  // 剩余外壳
+  puzzleMoves: number           // 当前轮移动步数
+  puzzleBestMoves: number       // 最佳轮步数（取最低）
   appraisalPurity: number
   appraisalCompleteness: number
 
@@ -136,10 +137,10 @@ interface GameState {
   dismissCustomer: () => void
   closeShop: () => void
   advanceDialog: (choiceIndex?: number) => void
-  initResonance: () => void
-  resonanceHit: (quality: 'perfect' | 'good', wasNoise: boolean) => void
-  resonanceMiss: () => void
+  initPuzzle: () => void
+  moveFragment: (row: number, col: number) => void
   completeAppraisal: () => void
+  bargain: () => void
   setNegotiatedPrice: (price: number) => void
   executeTrade: (action: TradeAction) => void
   addToInventory: (memory: Memory) => void
@@ -164,12 +165,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   dialogIndex: 0,
   revealedTruth: false,
 
-  resonanceShellTotal: 0,
-  resonanceShellRemaining: 0,
-  resonanceCombo: 0,
-  resonanceHits: 0,
-  resonanceNoiseHits: 0,
-  resonancePhase: 'idle',
+  puzzleGrid: [],
+  puzzleSize: 3,
+  puzzleRound: 0,
+  puzzleShellTotal: 0,
+  puzzleShellRemaining: 0,
+  puzzleMoves: 0,
+  puzzleBestMoves: 0,
   appraisalPurity: 0,
   appraisalCompleteness: 100,
 
@@ -214,7 +216,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const customer = getCustomerById(customerId)
     if (!customer) return
 
-    // Resonance shell layers: based on corruption level (1-5 layers)
     const shellTotal = 1 + Math.floor(customer.memory.corruptionLevel / 20)
 
     set({
@@ -222,12 +223,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentCustomer: customer,
       dialogIndex: 0,
       revealedTruth: false,
-      resonanceShellTotal: shellTotal,
-      resonanceShellRemaining: shellTotal,
-      resonanceCombo: 0,
-      resonanceHits: 0,
-      resonanceNoiseHits: 0,
-      resonancePhase: 'idle',
+      puzzleGrid: [],
+      puzzleSize: 3,
+      puzzleRound: 0,
+      puzzleShellTotal: shellTotal,
+      puzzleShellRemaining: shellTotal,
+      puzzleMoves: 0,
+      puzzleBestMoves: 0,
       appraisalPurity: customer.memory.purity,
       appraisalCompleteness: 100,
       negotiatedPrice: 0,
@@ -310,85 +312,136 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  initResonance: () => {
-    set({ resonancePhase: 'pulsing' })
-    get().addLog('共鸣舱启动——记忆接入诊断系统', 'info')
+  initPuzzle: () => {
+    const state = get()
+    const round = state.puzzleRound + 1
+    if (round > state.puzzleShellTotal) return
+
+    const size = state.puzzleSize
+    const solved: number[][] = []
+    let val = 1
+    for (let r = 0; r < size; r++) {
+      solved[r] = []
+      for (let c = 0; c < size; c++) {
+        solved[r][c] = (r === size - 1 && c === size - 1) ? 0 : val++
+      }
+    }
+    let grid = solved.map((row) => [...row])
+    let er = size - 1, ec = size - 1
+    const moves = 40 + Math.floor(Math.random() * 40)
+    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+    let lr = -1, lc = -1
+    for (let m = 0; m < moves; m++) {
+      const valid: [number, number][] = []
+      for (const [dr, dc] of dirs) {
+        const nr = er + dr, nc = ec + dc
+        if (nr >= 0 && nr < size && nc >= 0 && nc < size && !(nr === lr && nc === lc)) {
+          valid.push([nr, nc])
+        }
+      }
+      const [nr, nc] = valid[Math.floor(Math.random() * valid.length)]
+      grid[er][ec] = grid[nr][nc]
+      grid[nr][nc] = 0
+      lr = er; lc = ec
+      er = nr; ec = nc
+    }
+
+    set({ puzzleGrid: grid, puzzleRound: round, puzzleMoves: 0 })
+    get().addLog(`第 ${round} 层记忆碎片已打乱，请重组`, 'info')
   },
 
-  resonanceHit: (quality: 'perfect' | 'good', wasNoise: boolean) => {
+  moveFragment: (row, col) => {
     const state = get()
-    if (state.resonancePhase !== 'pulsing') return
+    const grid = state.puzzleGrid.map((r) => [...r])
+    const size = state.puzzleSize
+    let er = -1, ec = -1
+    for (let r = 0; r < size; r++)
+      for (let c = 0; c < size; c++)
+        if (grid[r][c] === 0) { er = r; ec = c }
+    const dr = Math.abs(row - er), dc = Math.abs(col - ec)
+    if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+      grid[er][ec] = grid[row][col]
+      grid[row][col] = 0
+      const newMoves = state.puzzleMoves + 1
+      set({ puzzleGrid: grid, puzzleMoves: newMoves })
 
-    if (wasNoise) {
-      // Hit a noise pulse — penalty
-      const newCompleteness = Math.max(20, state.appraisalCompleteness - 15)
-      set({
-        resonanceNoiseHits: state.resonanceNoiseHits + 1,
-        resonanceCombo: 0,
-        appraisalCompleteness: newCompleteness,
-      })
-      get().addLog('杂音脉冲！记忆完整性受损...', 'danger')
-      return
+      let val = 1, solved = true
+      for (let r = 0; r < size && solved; r++)
+        for (let c = 0; c < size && solved; c++) {
+          const exp = (r === size - 1 && c === size - 1) ? 0 : val++
+          if (grid[r][c] !== exp) solved = false
+        }
+
+      if (solved) {
+        const newRemaining = Math.max(0, state.puzzleShellRemaining - 1)
+        const purityBonus = 8 + Math.max(0, 12 - Math.floor(newMoves / 5))
+        const newBest = state.puzzleBestMoves === 0 ? newMoves : Math.min(state.puzzleBestMoves, newMoves)
+        set({
+          puzzleShellRemaining: newRemaining,
+          puzzleBestMoves: newBest,
+          appraisalPurity: Math.min(100, state.appraisalPurity + purityBonus),
+        })
+        get().addLog(`碎片重组成功！+${purityBonus}% 纯度`, 'success')
+        if (newRemaining <= 0 && !state.revealedTruth) {
+          set({ revealedTruth: true })
+          get().addLog('全部外壳解码完成！隐藏情感已揭示', 'success')
+        }
+      }
     }
-
-    // Successful hit
-    const layersStripped = quality === 'perfect' ? 2 : 1
-    const newRemaining = Math.max(0, state.resonanceShellRemaining - layersStripped)
-    const newCombo = state.resonanceCombo + 1
-    const purityBonus = quality === 'perfect' ? 12 : 6
-    const comboBonus = newCombo > 1 ? newCombo * 2 : 0
-
-    set({
-      resonanceShellRemaining: newRemaining,
-      resonanceCombo: newCombo,
-      resonanceHits: state.resonanceHits + 1,
-      appraisalPurity: Math.min(100, state.appraisalPurity + purityBonus + comboBonus),
-    })
-
-    if (quality === 'perfect') {
-      get().addLog(`完美共振！×${newCombo} 连击`, 'success')
-    } else {
-      get().addLog('共振成功，记忆外壳剥落', 'success')
-    }
-
-    // All layers stripped → truth revealed
-    if (newRemaining <= 0 && !state.revealedTruth) {
-      set({ revealedTruth: true, resonancePhase: 'complete' })
-      get().addLog('所有外壳已剥离！检测到隐藏情感波动...', 'success')
-    }
-  },
-
-  resonanceMiss: () => {
-    const state = get()
-    if (state.resonancePhase !== 'pulsing') return
-    set({
-      resonanceCombo: 0,
-      appraisalCompleteness: Math.max(20, state.appraisalCompleteness - 5),
-    })
-    get().addLog('错失共振窗口，完整度略微下降', 'warning')
   },
 
   completeAppraisal: () => {
     const state = get()
     const purity = state.appraisalPurity
-    const shellRatio = state.resonanceShellTotal > 0
-      ? (state.resonanceShellTotal - state.resonanceShellRemaining) / state.resonanceShellTotal
+    const shellRatio = state.puzzleShellTotal > 0
+      ? (state.puzzleShellTotal - state.puzzleShellRemaining) / state.puzzleShellTotal
       : 1
+    const efficiency = state.puzzleBestMoves > 0 ? Math.max(0.5, 1 - (state.puzzleBestMoves - 10) * 0.02) : 0.8
     const completeness = Math.round(
-      state.appraisalCompleteness * (0.7 + shellRatio * 0.3)
+      Math.min(100, state.appraisalCompleteness * (0.5 + shellRatio * 0.3 + efficiency * 0.2))
     )
     const rarity = state.currentCustomer?.memory.rarity ?? 1
     const marketRate = 0.8 + Math.random() * 0.4
     const basePrice = state.currentCustomer?.memory.basePrice ?? 100
     const price = Math.round((purity / 100) * (completeness / 100) * rarity * basePrice * marketRate)
 
-    set({
-      phase: 'trading',
-      negotiatedPrice: price,
-      appraisalCompleteness: completeness,
-    })
+    // 拼图表现降低顾客防线：完成度越高、步数越少，防线越低
+    const defenseReduction = Math.round(shellRatio * 25 + efficiency * 20)
+    const newDefense = Math.max(5, (state.currentCustomer?.defense ?? 50) - defenseReduction)
+    const updatedCustomer = state.currentCustomer
+      ? { ...state.currentCustomer, defense: newDefense }
+      : null
+
+    set({ phase: 'trading', currentCustomer: updatedCustomer, negotiatedPrice: price, appraisalCompleteness: completeness })
     get().addLog(`鉴定完成 — 纯度: ${Math.round(purity)}%, 完整度: ${Math.round(completeness)}%`, 'info')
     get().addLog(`估价: ${price} 元`, 'info')
+    get().addLog(`顾客防线削弱至 ${newDefense}%，可以尝试压低收购价`, 'warning')
+  },
+
+  bargain: () => {
+    const state = get()
+    if (!state.currentCustomer) return
+    const defense = state.currentCustomer.defense
+    // 讨价成功率 = 100 - 防线值（防线越低越容易）
+    const successRate = Math.max(10, 100 - defense)
+    const roll = Math.random() * 100
+
+    if (roll < successRate) {
+      // 成功：压低收购价 20-35%
+      const discount = 0.65 + Math.random() * 0.15 // 65%-80% of original = 20-35% off
+      const newPrice = Math.round(state.negotiatedPrice * discount)
+      set({ negotiatedPrice: Math.max(1, newPrice) })
+      get().addLog(`讨价成功！收购价压至 ${newPrice} 元 (降幅 ${Math.round((1 - discount) * 100)}%)`, 'success')
+    } else {
+      // 失败：顾客反感，价格回升 10-15%
+      const penalty = 1.1 + Math.random() * 0.05
+      const newPrice = Math.round(state.negotiatedPrice * penalty)
+      const upsetCustomer = state.currentCustomer
+        ? { ...state.currentCustomer, urgency: Math.min(100, state.currentCustomer.urgency + 15) }
+        : null
+      set({ negotiatedPrice: Math.max(1, newPrice), currentCustomer: upsetCustomer })
+      get().addLog(`讨价失败！顾客抬价至 ${newPrice} 元，态度变差`, 'danger')
+    }
   },
 
   setNegotiatedPrice: (price) => set({ negotiatedPrice: price }),

@@ -11,6 +11,7 @@ export function TradingScreen() {
   const negotiatedPrice = useGameStore((s) => s.negotiatedPrice)
   const revealedTruth = useGameStore((s) => s.revealedTruth)
   const executeTrade = useGameStore((s) => s.executeTrade)
+  const bargain = useGameStore((s) => s.bargain)
   const abortCustomer = useGameStore((s) => s.abortCustomer)
   const money = useGameStore((s) => s.money)
 
@@ -178,6 +179,46 @@ export function TradingScreen() {
                 顾客的心理防线已接近崩溃，可以获取更多信息。
               </Text>
             )}
+          </CardContent>
+        </Card>
+      </View>
+
+      {/* 讨价还价 */}
+      <View className="px-4 mb-4">
+        <Card className="bg-[#1a1a2e] border-[#ffaa00]/30">
+          <CardContent className="p-3">
+            <View className="flex flex-row items-center justify-between mb-2">
+              <View className="flex flex-row items-center gap-2">
+                <View className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ffaa00', boxShadow: '0 0 6px #ffaa00' }} />
+                <Text className="block text-sm font-semibold text-[#ffaa00]">讨价还价</Text>
+              </View>
+              <Badge variant="outline" style={{ borderColor: '#ffaa0066', color: '#ffaa00' }} className="text-xs">
+                防线 {currentCustomer.defense}%
+              </Badge>
+            </View>
+
+            <Text className="block text-xs text-[#8888aa] mb-3">
+              防线 {currentCustomer.defense}%，成功率约 {Math.max(10, 100 - currentCustomer.defense)}%。
+              成功压低收购价 20-35%，失败则顾客抬价反击。
+            </Text>
+
+            <View
+              className="flex items-center justify-center w-full py-3 rounded-lg"
+              style={{
+                backgroundColor: 'rgba(255,170,0,0.15)',
+                border: '1px solid rgba(255,170,0,0.4)',
+              }}
+              hoverClass="bg-[#ffaa00]/30"
+              onClick={bargain}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Text className="block text-lg">💰</Text>
+                <Text style={{ color: '#ffaa00', fontSize: '15px', fontWeight: 600 }}>讨价还价</Text>
+                <Text className="block text-xs text-[#8888aa]">
+                  (当前 {negotiatedPrice} 元)
+                </Text>
+              </View>
+            </View>
           </CardContent>
         </Card>
       </View>
