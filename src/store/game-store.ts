@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import { getCustomerById } from './game-data'
+import { getCustomerById, getAllCustomerIds } from './game-data'
 
 // ===== 类型定义 =====
 export type EmotionType = 'sadness' | 'anger' | 'joy' | 'fear' | 'nostalgia' | 'guilt'
-export type GamePhase = 'hub' | 'dialog' | 'appraisal' | 'trading' | 'result' | 'storage'
+export type GamePhase = 'hub' | 'dialog' | 'appraisal' | 'trading' | 'result' | 'storage' | 'closing'
 export type TradeAction = 'buy' | 'refuse' | 'blackmail' | 'tamper'
 export type LogType = 'info' | 'success' | 'warning' | 'danger'
 
@@ -131,18 +131,23 @@ interface GameState {
   // 日志
   log: LogEntry[]
 
-  // 已完成的顾客
+  // 已完成的顾客 & 当日记录
   completedCustomerIds: string[]
+  abortedCustomerId: string | null   // 当前中断的顾客（可恢复）
   dayConsequences: string[]
 
-  // 顾客队列
-  customerQueue: string[]
-  queueIndex: number
+  // 当日顾客队列（由 startNewDay 生成）
+  dailyQueue: string[]
+  dailyQueueIndex: number
 
   // Actions
   setPhase: (phase: GamePhase) => void
   addLog: (text: string, type: LogType) => void
   startNextCustomer: () => void
+  abortCustomer: () => void
+  resumeCustomer: () => void
+  dismissCustomer: () => void
+  closeShop: () => void
   advanceDialog: (choiceIndex?: number) => void
   adjustBand: (emotion: EmotionType, delta: number) => void
   removeImpurity: (id: string) => void
@@ -185,10 +190,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   log: [],
   completedCustomerIds: [],
+  abortedCustomerId: null,
   dayConsequences: [],
 
-  customerQueue: ['lao-chen', 'xiao-yu', 'boss-zhou', 'a-guang', 'sister-lin'],
-  queueIndex: 0,
+  dailyQueue: [],
+  dailyQueueIndex: 0,
 
   setPhase: (phase) => set({ phase }),
 
@@ -204,44 +210,34 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   startNextCustomer: () => {
     const state = get()
-    // 如果有中断的顾客交互（返回典当行再回来），恢复继续
-    if (state.currentCustomer && !state.completedCustomerIds.includes(state.currentCustomer.id)) {
-      set({ phase: 'dialog' })
-      get().addLog(`继续与 ${state.currentCustomer.name} 的对话...`, 'info')
+    // 如果有中断的顾客交互，不能开始新顾客（需先恢复或放弃）
+    if (state.abortedCustomerId) {
+      get().addLog('请先处理中断的顾客交易', 'warning')
       return
     }
-    const { customerQueue, queueIndex } = state
-    if (queueIndex >= customerQueue.length) {
-      set({ phase: 'hub' })
-      get().addLog('今天没有更多顾客了。', 'info')
+    const { dailyQueue, dailyQueueIndex } = state
+    if (dailyQueueIndex >= dailyQueue.length) {
+      get().addLog('今天没有更多顾客了，请结束营业', 'info')
       return
     }
-    const customerId = customerQueue[queueIndex]
+    const customerId = dailyQueue[dailyQueueIndex]
     const customer = getCustomerById(customerId)
     if (!customer) return
 
-    // Generate spectrum bands for equalizer
     const emotionOrder: EmotionType[] = ['sadness', 'anger', 'joy', 'fear', 'nostalgia', 'guilt']
     const labels = ['悲', '怒', '喜', '惧', '怀', '罪']
     const spectrumBands: SpectrumBand[] = emotionOrder.map((emo, i) => {
       let target: number
       if (emo === customer.memory.emotion) {
-        target = 60 + Math.floor(Math.random() * 20) // surface: 60-80
+        target = 60 + Math.floor(Math.random() * 20)
       } else if (emo === customer.memory.hiddenEmotion) {
-        target = 65 + Math.floor(Math.random() * 20) // hidden: 65-85
+        target = 65 + Math.floor(Math.random() * 20)
       } else {
-        target = Math.floor(Math.random() * 35) // other: 0-35
+        target = Math.floor(Math.random() * 35)
       }
-      return {
-        emotion: emo,
-        label: labels[i],
-        color: EMOTION_COLORS[emo],
-        current: 0,
-        target,
-      }
+      return { emotion: emo, label: labels[i], color: EMOTION_COLORS[emo], current: 0, target }
     })
 
-    // Generate impurities for appraisal
     const impurityCount = 3 + Math.floor(customer.memory.corruptionLevel / 25)
     const impurities: Impurity[] = []
     for (let i = 0; i < impurityCount; i++) {
@@ -266,9 +262,48 @@ export const useGameStore = create<GameState>((set, get) => ({
       impurityMisses: 0,
       negotiatedPrice: 0,
       finalAction: null,
-      queueIndex: queueIndex + 1,
+      abortedCustomerId: null,
+      dailyQueueIndex: dailyQueueIndex + 1,
     })
     get().addLog(`${customer.name}走进了典当行...`, 'info')
+  },
+
+  abortCustomer: () => {
+    const state = get()
+    if (!state.currentCustomer) return
+    set({
+      phase: 'hub',
+      abortedCustomerId: state.currentCustomer.id,
+    })
+    get().addLog(`暂时中止了与 ${state.currentCustomer.name} 的交易`, 'warning')
+  },
+
+  resumeCustomer: () => {
+    const state = get()
+    if (!state.abortedCustomerId) return
+    const customer = getCustomerById(state.abortedCustomerId)
+    if (!customer) return
+    // currentCustomer 和所有鉴定状态已在 store 中保留，直接恢复
+    set({ phase: 'dialog', abortedCustomerId: null })
+    get().addLog(`继续与 ${customer.name} 的对话...`, 'info')
+  },
+
+  dismissCustomer: () => {
+    const state = get()
+    const customerId = state.abortedCustomerId
+    if (!customerId) return
+    const customer = getCustomerById(customerId)
+    set({
+      abortedCustomerId: null,
+      currentCustomer: null,
+      completedCustomerIds: [...state.completedCustomerIds, customerId],
+    })
+    get().addLog(`${customer?.name ?? '顾客'}离开了典当行`, 'info')
+  },
+
+  closeShop: () => {
+    set({ phase: 'closing' })
+    get().addLog('打烊了，开始整理今天的收获...', 'info')
   },
 
   advanceDialog: (choiceIndex) => {
@@ -499,7 +534,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       purity: Math.max(0, m.purity - m.daysStored * 2),
     }))
 
-    // Check for events
+    // Check for overnight events
     const events: string[] = []
     if (state.totalNegativeEnergy > 60) {
       events.push('店铺内的负面能量过强...灯光突然熄灭了几秒钟。')
@@ -509,22 +544,57 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     set((s) => ({
-      phase: 'hub',
       day: s.day + 1,
       inventory: agedInventory,
       dayConsequences: [...s.dayConsequences, ...events],
       totalNegativeEnergy: Math.max(0, s.totalNegativeEnergy - 10),
       currentCustomer: null,
+      abortedCustomerId: null,
+      completedCustomerIds: [],
+      dailyQueue: [],
+      dailyQueueIndex: 0,
     }))
 
     get().addLog(`—— 第 ${state.day} 天结束 ——`, 'info')
   },
 
   startNewDay: () => {
+    const state = get()
+    const allIds = getAllCustomerIds()
+    const mainIds = ['lao-chen', 'xiao-yu', 'boss-zhou', 'a-guang', 'sister-lin']
+    const sideIds = allIds.filter((id) => !mainIds.includes(id))
+
+    // Pick random side customers (1-3)
+    const sideCount = 1 + Math.floor(Math.random() * 3)
+    const shuffled = [...sideIds].sort(() => Math.random() - 0.5)
+    const selectedSide = shuffled.slice(0, sideCount)
+
+    // Add main customer if their story day matches
+    const storyDayMap: Record<string, number> = {
+      'lao-chen': 1, 'xiao-yu': 2, 'boss-zhou': 3, 'a-guang': 4, 'sister-lin': 5,
+    }
+    const todayMain: string[] = []
+    for (const [id, storyDay] of Object.entries(storyDayMap)) {
+      if (state.day === storyDay && allIds.includes(id)) {
+        todayMain.push(id)
+      }
+    }
+
+    // Interleave: main first, then side
+    const finalQueue: string[] = [...todayMain]
+    for (const sid of selectedSide) {
+      // Insert side customers at random positions to mix things up
+      const pos = Math.floor(Math.random() * (finalQueue.length + 1))
+      finalQueue.splice(pos, 0, sid)
+    }
+
     set({
+      phase: 'hub',
       dayConsequences: [],
+      dailyQueue: finalQueue,
+      dailyQueueIndex: 0,
     })
-    get().addLog(`第 ${get().day} 天开始了`, 'info')
+    get().addLog(`第 ${state.day} 天开始了，今天有 ${finalQueue.length} 位顾客`, 'info')
   },
 
   showStorage: () => set({ phase: 'storage' }),

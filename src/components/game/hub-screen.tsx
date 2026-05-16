@@ -1,24 +1,41 @@
+import { useEffect, useRef } from 'react'
 import { View, Text } from '@tarojs/components'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useGameStore } from '@/store/game-store'
+import { getCustomerById } from '@/store/game-data'
 
 export function HubScreen() {
+  const initRef = useRef(false)
   const day = useGameStore((s) => s.day)
   const money = useGameStore((s) => s.money)
   const reputation = useGameStore((s) => s.reputation)
   const totalNegative = useGameStore((s) => s.totalNegativeEnergy)
   const inventory = useGameStore((s) => s.inventory)
   const dayConsequences = useGameStore((s) => s.dayConsequences)
+  const dailyQueue = useGameStore((s) => s.dailyQueue)
+  const dailyQueueIndex = useGameStore((s) => s.dailyQueueIndex)
+  const abortedCustomerId = useGameStore((s) => s.abortedCustomerId)
   const completedCustomerIds = useGameStore((s) => s.completedCustomerIds)
-  const customerQueue = useGameStore((s) => s.customerQueue)
-  const queueIndex = useGameStore((s) => s.queueIndex)
   const startNextCustomer = useGameStore((s) => s.startNextCustomer)
+  const resumeCustomer = useGameStore((s) => s.resumeCustomer)
+  const dismissCustomer = useGameStore((s) => s.dismissCustomer)
+  const closeShop = useGameStore((s) => s.closeShop)
   const showStorage = useGameStore((s) => s.showStorage)
-  const endDay = useGameStore((s) => s.endDay)
+  const startNewDay = useGameStore((s) => s.startNewDay)
 
-  const hasMoreCustomers = queueIndex < customerQueue.length
-  const allDone = completedCustomerIds.length >= customerQueue.length
+  // Auto-initialize daily queue on first load
+  useEffect(() => {
+    if (!initRef.current && dailyQueue.length === 0) {
+      initRef.current = true
+      startNewDay()
+    }
+  }, [dailyQueue.length, startNewDay])
+
+  const hasMoreCustomers = dailyQueueIndex < dailyQueue.length
+  const remainingCount = dailyQueue.length - dailyQueueIndex
+  const todayDone = dailyQueue.length > 0 && !hasMoreCustomers
+  const abortedCustomer = abortedCustomerId ? getCustomerById(abortedCustomerId) : null
 
   return (
     <View className="min-h-screen bg-[#0a0a0f] scanline-overlay vignette">
@@ -72,14 +89,20 @@ export function HubScreen() {
             {/* 场景描述 */}
             <View className="flex flex-row items-center gap-2 mb-3">
               <View className="w-2 h-2 rounded-full bg-[#ffaa00] breathe" />
-              <Text className="block text-sm text-[#8888aa]">柜台上的台灯发出昏黄的光</Text>
+              <Text className="block text-sm text-[#8888aa]">
+                {remainingCount > 0
+                  ? `柜台上的台灯发出昏黄的光，门外还有 ${remainingCount} 位顾客在等待`
+                  : todayDone
+                  ? '忙碌的一天结束了，是时候打烊了'
+                  : '柜台上的台灯发出昏黄的光，静候下一位顾客的光临'}
+              </Text>
             </View>
 
             {/* 柜台物品 */}
             <View className="flex flex-row gap-3 mb-3">
               <View className="flex-1 bg-[#0a0a0f] rounded-lg p-3 border border-[#1a1a2e]">
                 <Text className="block text-xs text-[#444466] mb-1">黄铜天平</Text>
-                <Text className="block text-xs text-[#8888aa]">静待记忆...</Text>
+                <Text className="block text-xs text-[#8888aa]">{completedCustomerIds.length} 笔交易</Text>
               </View>
               <View className="flex-1 bg-[#0a0a0f] rounded-lg p-3 border border-[#1a1a2e]">
                 <Text className="block text-xs text-[#444466] mb-1">玻璃罐架</Text>
@@ -118,6 +141,20 @@ export function HubScreen() {
           </Card>
         )}
 
+        {/* 中断的顾客 */}
+        {abortedCustomer && (
+          <Card className="bg-[#ffaa00]/10 border-[#ffaa00]/30 mb-4 fade-in-up">
+            <CardContent className="p-3">
+              <Text className="block text-xs text-[#ffaa00] mb-2 font-semibold">
+                {abortedCustomer.name} 还在柜台前等待...
+              </Text>
+              <Text className="block text-xs text-[#8888aa]">
+                交易已中止，你可以继续处理或请其离开。
+              </Text>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 灵异事件提示 */}
         {totalNegative > 60 && (
           <Card className="bg-[#ff3344]/5 border-[#ff3344]/30 mb-4">
@@ -136,41 +173,57 @@ export function HubScreen() {
 
       {/* 底部操作区 */}
       <View className="game-bottom-bar">
-        {hasMoreCustomers ? (
+        {/* 主操作：有中断顾客时显示恢复按钮 */}
+        {abortedCustomer ? (
+          <View
+            className="game-primary-btn"
+            style={{ backgroundColor: '#ffaa00', color: '#0a0a0f' }}
+            onClick={resumeCustomer}
+          >
+            <Text style={{ color: '#0a0a0f', fontSize: '16px', fontWeight: 600 }}>继续 {abortedCustomer.name} 的交易</Text>
+          </View>
+        ) : hasMoreCustomers ? (
           <View
             className="game-primary-btn"
             style={{ backgroundColor: '#00f0ff', color: '#0a0a0f' }}
             onClick={startNextCustomer}
           >
-            <Text style={{ color: '#0a0a0f', fontSize: '16px', fontWeight: 600 }}>下一位顾客</Text>
+            <Text style={{ color: '#0a0a0f', fontSize: '16px', fontWeight: 600 }}>
+              下一位顾客 ({remainingCount}位等待)
+            </Text>
           </View>
-        ) : allDone ? (
+        ) : todayDone ? (
           <View
             className="game-primary-btn"
-            style={{ backgroundColor: '#ffaa00', color: '#0a0a0f' }}
-            onClick={endDay}
+            style={{ backgroundColor: '#7b2ff7', color: '#fff' }}
+            onClick={closeShop}
           >
-            <Text style={{ color: '#0a0a0f', fontSize: '16px', fontWeight: 600 }}>结束今天</Text>
+            <Text style={{ color: '#fff', fontSize: '16px', fontWeight: 600 }}>结束营业</Text>
           </View>
         ) : (
           <View className="bg-[#141420] rounded-lg p-4 border border-[#2a2a40] text-center">
             <Text className="block text-sm text-[#8888aa]">等待顾客...</Text>
+            <Text className="block text-xs text-[#444466] mt-1">今日暂无顾客</Text>
           </View>
         )}
 
         <View className="bottom-bar-row">
-          <View
-            className="game-secondary-btn"
-            onClick={showStorage}
-          >
+          <View className="game-secondary-btn" onClick={showStorage}>
             <Text style={{ color: '#8888aa', fontSize: '14px' }}>存储柜</Text>
           </View>
-          <View
-            className="game-secondary-btn"
-            onClick={endDay}
-          >
-            <Text style={{ color: '#8888aa', fontSize: '14px' }}>结束今天</Text>
-          </View>
+          {abortedCustomer ? (
+            <View className="game-secondary-btn" style={{ borderColor: '#ff334466' }} onClick={dismissCustomer}>
+              <Text style={{ color: '#ff3344', fontSize: '14px' }}>赶走 {abortedCustomer.name}</Text>
+            </View>
+          ) : hasMoreCustomers ? (
+            <View className="game-secondary-btn" onClick={closeShop}>
+              <Text style={{ color: '#8888aa', fontSize: '14px' }}>结束营业</Text>
+            </View>
+          ) : (
+            <View className="game-secondary-btn" onClick={closeShop}>
+              <Text style={{ color: '#8888aa', fontSize: '14px' }}>打烊休息</Text>
+            </View>
+          )}
         </View>
       </View>
     </View>

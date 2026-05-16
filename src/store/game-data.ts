@@ -296,6 +296,357 @@ const customers: Record<string, Customer> = {
     consequenceB: '你拒绝了交易。林姐沉默良久，然后轻轻说："也许我还不准备好放手。"她收起记忆球离开了。你不确定她是否真的准备好了。',
     consequenceC: '你威胁要向医疗委员会举报。林姐当场瘫坐在地上，反复说着"我不是故意的"。第二天你得知她去了警局自首。你做了一件"正确"的事，但代价是一个人的余生。',
   },
+
+  // ===== 支线顾客 =====
+  'street-poet': {
+    id: 'street-poet', name: '流浪诗人', title: '霓虹下的吟游者',
+    appearance: '披着荧光涂鸦的旧风衣，头发染成褪色的紫，手指上缠着写满诗句的绷带。',
+    urgency: 45, concealment: 40, defense: 35,
+    memory: {
+      id: 'mem-street-poet', name: '最后一首诗', emotion: 'nostalgia', hiddenEmotion: 'sadness',
+      purity: 50, completeness: 65, rarity: 2, basePrice: 200,
+      description: '一段在雨中创作的记忆，诗句像雨水一样从脑海中倾泻而出。',
+      hiddenTruth: '这不是创作，是哀悼。诗中描写的"远去的爱人"其实是他去世的猫。',
+      coreStory: '他靠出卖记忆换取墨水钱，好在霓虹灯下继续写无人阅读的诗。',
+      isCorrupted: false, corruptionLevel: 25, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '门被一阵风推开，一个浑身湿透的年轻人站在门口，手里攥着一本防水笔记本。' },
+      { speaker: 'customer' as const, text: '我有一首诗的记忆——我最好的作品。卖掉它，我就能买一年的墨水了。', choices: [
+        { text: '诗的灵感能卖钱？有意思。', defenseChange: -5, urgencyChange: 5, priceModifier: 1.0, nextStep: 2 },
+        { text: '我鉴定一下再说。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他把笔记本翻到某一页推过来，纸张被雨水打湿但字迹依然清晰——那是关于一只猫的诗。' },
+    ],
+    consequenceA: '后来偶尔会在雨天的霓虹灯下看到他，仍然在写诗，只是诗里再也听不见雨声。',
+    consequenceB: '他收起笔记本离开了。走过的地方留下了几个湿漉漉的脚印。',
+    consequenceC: '你威胁要毁掉他的笔记本。他抢回来冲进了雨里，再也没有出现过。',
+  },
+
+  'gambler-wang': {
+    id: 'gambler-wang', name: '王赌徒', title: '最后一注',
+    appearance: '手指被烟熏得焦黄，西装袖口有线头。说话时眼球快速扫视四周，嘴角有一道旧伤疤。',
+    urgency: 75, concealment: 55, defense: 60,
+    memory: {
+      id: 'mem-gambler-wang', name: '翻盘时刻', emotion: 'joy', hiddenEmotion: 'guilt',
+      purity: 30, completeness: 55, rarity: 2, basePrice: 350,
+      description: '一场赌局大翻盘的记忆，从只剩一个筹码到赢得全场，心脏在胸腔里狂跳。',
+      hiddenTruth: '翻盘的关键不是运气——他出千了。记忆中"牌友的惊呼"其实是愤怒的呼喊。',
+      coreStory: '他卖掉这段记忆是想洗掉作弊的负罪感，但记忆一卖他就忘了为什么不该再去赌场。',
+      isCorrupted: true, corruptionLevel: 50, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '门开了，一个眼神飘忽的中年男人探头进来，确认店里没有其他人后才走进来。' },
+      { speaker: 'customer' as const, text: '我有一段绝地翻盘的记忆。赌博用的，但你可以鉴定里面的...心理状态。我需要换点钱继续用。', choices: [
+        { text: '你确定卖了这个不会再去赌？', defenseChange: -10, urgencyChange: 10, priceModifier: 1.1, nextStep: 2 },
+        { text: '让我看看。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他放在柜台上的记忆球表面布满裂纹，光芒紊乱——像是被反复翻找过很多次。' },
+    ],
+    consequenceA: '几天后听说他又进了赌场，用你付的钱。没有那段翻盘记忆的支撑，他输得比以往都惨。',
+    consequenceB: '他叹了口气说也许是时候戒赌了，但你看到他离开时往赌场的方向走去。',
+    consequenceC: '你威胁要告诉赌场他出千的事。他脸色惨白，丢下记忆球跑了——你白得了一段记忆。',
+  },
+
+  'model-blue': {
+    id: 'model-blue', name: '蓝羽', title: '镜中人',
+    appearance: '身材高挑，穿着简洁的灰色套装，面容精致但被一块轻薄的蓝纱遮掩，只露出一双疲惫的眼睛。',
+    urgency: 55, concealment: 60, defense: 45,
+    memory: {
+      id: 'mem-model-blue', name: '完美的自己', emotion: 'joy', hiddenEmotion: 'fear',
+      purity: 40, completeness: 60, rarity: 3, basePrice: 400,
+      description: '一段在镜中看到完美的自己的记忆——完美的妆容、完美的微笑、完美的自信。',
+      hiddenTruth: '镜子里的不是自信，是恐惧。她每天花两小时化妆不是因为爱美，而是害怕别人看到她真实的样子。',
+      coreStory: '她想卖掉的不是美，而是对不美的恐惧。',
+      isCorrupted: true, corruptionLevel: 45, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '一个戴着面纱的女子轻轻推开门，她走路时几乎不发出声音，像一片落叶。' },
+      { speaker: 'customer' as const, text: '我想卖掉一段...关于美的记忆。每天早上照镜子时我会感到一瞬间的完美，但那感觉很快就消失了。', choices: [
+        { text: '你在害怕镜子里的那个人不够好吗？', defenseChange: -10, urgencyChange: 10, priceModifier: 1.1, nextStep: 2 },
+        { text: '鉴定会看到你的真实一面。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '她递出的记忆球表面镀着一层银色的光泽，但光泽在碰到柜台的瞬间褪去了大半。' },
+    ],
+    consequenceA: '后来看到一则整容广告，代言人长得很像她，眼神空洞地望着镜头。',
+    consequenceB: '她收回了记忆球，说还需要它。你没收一分钱，但她离开时你看到她的面纱掉在门口。',
+    consequenceC: '你说没有买不走的记忆。她沉默片刻，将记忆球推给你，离开时解下了面纱。',
+  },
+
+  'security-lao': {
+    id: 'security-lao', name: '老保安', title: '三十年的夜班',
+    appearance: '矮个子老人，穿着洗得发白的保安制服，腰带上挂着一大串钥匙——走起路来叮叮当当响。',
+    urgency: 35, concealment: 30, defense: 25,
+    memory: {
+      id: 'mem-security-lao', name: '最后一次巡逻', emotion: 'nostalgia', hiddenEmotion: 'sadness',
+      purity: 55, completeness: 75, rarity: 1, basePrice: 150,
+      description: '三十年来最后一趟夜间巡逻的记忆，手电筒扫过空无一人的走廊，每一步都像在跟老建筑告别。',
+      hiddenTruth: '他不是在告别建筑，而是在告别他的三十岁——三十年前他第一天上班时，有个姑娘在走廊等他。',
+      coreStory: '卖掉这段记忆后，他就能安心退休了——或者说，他就能忘记那些等待了。',
+      isCorrupted: false, corruptionLevel: 15, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '钥匙碰撞声先于本人抵达。一个矮个老人走了进来，手里还在转着一把铜钥匙。' },
+      { speaker: 'customer' as const, text: '我明天就要退休了，想卖掉最后一次巡逻的记忆。三十年了，每晚走同样的路，我觉得够了。', choices: [
+        { text: '三十年的记忆一定很厚重。', defenseChange: -5, urgencyChange: 5, priceModifier: 1.1, nextStep: 2 },
+        { text: '来看看成色。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他的记忆球静静地躺在柜台上，像一颗温热的鹅卵石——没有光芒四射，但握在手里很踏实。' },
+    ],
+    consequenceA: '一周后的夜晚，你路过他曾经工作的大楼。新保安的钥匙声陌生而清脆。老保安大概已经在南方晒太阳了。',
+    consequenceB: '他想了想说还是留着吧，说不定老了能在摇椅上慢慢回想。他临走时送了你一把旧钥匙扣。',
+    consequenceC: '你暗示可以联系他的前雇主了解情况。他一句话没说，把记忆球推给你，放下钥匙走了。',
+  },
+
+  'dj-echo': {
+    id: 'dj-echo', name: '回声', title: '失聪的DJ',
+    appearance: '年轻女性，脖子上挂着一副坏掉的耳机。手指不停地打着节拍，每个关节都能发出清脆的响声。',
+    urgency: 60, concealment: 50, defense: 40,
+    memory: {
+      id: 'mem-dj-echo', name: '最后一次演出', emotion: 'joy', hiddenEmotion: 'fear',
+      purity: 35, completeness: 50, rarity: 3, basePrice: 450,
+      description: '地下俱乐部的最后一晚——低音炮震得酒杯里的酒都在跳，她戴着耳机在人群的尖叫中打出完美的drop。',
+      hiddenTruth: '她的听力正在逐渐消失。记忆中那些"震耳欲聋的bass"其实已经失真了——这是她最后一次真正听见音乐。',
+      coreStory: '卖掉这段记忆后她将彻底忘记音乐是什么感觉。她用这笔钱买了一套助听设备，然后从头开始学听。',
+      isCorrupted: true, corruptionLevel: 55, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '店门被推开时带进一阵低音——准确地说，是门口的人在用手机放一首只有低频的歌。' },
+      { speaker: 'customer' as const, text: '我快要听不见了。想卖掉最后一次完整演出的记忆——那段bass太美了，美到我现在听什么都觉得是噪音。', choices: [
+        { text: '你卖的不只是音乐，是最后还能听见的自己。', defenseChange: -10, urgencyChange: 10, priceModifier: 1.15, nextStep: 2 },
+        { text: '音乐人的记忆很特别，来鉴定。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '她放在柜台上的记忆球发出有节奏的振动——像心跳一样，但频率正在缓慢下降。' },
+    ],
+    consequenceA: '三个月后你去了一家新开的club，DJ台后面是个戴助听器的女生——她用另一种方式在听音乐。',
+    consequenceB: '她说也许卖掉记忆不等于失去音乐。她走时在门口哼了一段旋律，你听出那是她记忆球里的节奏。',
+    consequenceC: '你威胁要告诉圈内人她是假DJ。她愣了几秒，然后大笑起来——她说她从来不在乎别人怎么说，然后在你的柜台上狠狠敲了一段beat。',
+  },
+
+  'mute-child': {
+    id: 'mute-child', name: '小默', title: '不会说话的孩子',
+    appearance: '约莫十岁的小男孩，穿着不合身的旧校服。他一个字都不说，只用手势和写字板与人交流。',
+    urgency: 80, concealment: 20, defense: 15,
+    memory: {
+      id: 'mem-mute-child', name: '妈妈的声音', emotion: 'sadness', hiddenEmotion: 'nostalgia',
+      purity: 70, completeness: 85, rarity: 2, basePrice: 250,
+      description: '一段关于妈妈的记忆——她的声音在电话那头轻轻哼着摇篮曲，每一个字都像羽毛落在水面上。',
+      hiddenTruth: '他的妈妈已经不在了。这段记忆是一通永远不会再打来的电话的录音，他在脑中反复播放了很多年，现在磁带快要碎了。',
+      coreStory: '卖记忆不是为了忘记，是为了记住。他想把这段记忆存到更安全的介质上——你的典当行。',
+      isCorrupted: true, corruptionLevel: 30, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '一个瘦小的男孩蹲在门口，他不说话，只是用明亮的眼睛看着你，然后举起一块小白板。上面写着：你们这里收记忆吗？' },
+      { speaker: 'customer' as const, text: '（他在白板上写道）我想卖妈妈的记忆。她的声音我记得最清楚了，但最近好像越来越模糊。我怕有一天完全记不得了。', choices: [
+        { text: '（对着孩子蹲下来）好。我会帮你好好保管。', defenseChange: -10, urgencyChange: 15, priceModifier: 1.0, nextStep: 2 },
+        { text: '（看他的写字板）你一个人来的？', defenseChange: 0, urgencyChange: 5, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他小心地从口袋里掏出一个玻璃球——很小，只有弹珠那么大——放在你的柜台上。球里隐隐传出一段断断续续的哼唱声。' },
+    ],
+    consequenceA: '小男孩每周五放学后都会来你的店门口坐一会儿，在写字板上画一棵树，然后离开。你从来没听他说过一个字。',
+    consequenceB: '你把记忆球还给了他。他不知道是该失落还是开心，在白板上画了一个很大的问号。你在他面前蹲下来，说你应该留着它。',
+    consequenceC: '你用极低的价格收下了记忆球。小男孩离开时回头看了你一眼，那个眼神让你后背发凉——像是看穿了你。',
+  },
+
+  'drunk-doctor': {
+    id: 'drunk-doctor', name: '酒徒医生', title: '手术刀的重量',
+    appearance: '穿着皱巴巴的白大褂，身上有淡淡的消毒水味。眼镜片有一个角裂开，他用胶布粘着。',
+    urgency: 65, concealment: 70, defense: 55,
+    memory: {
+      id: 'mem-drunk-doctor', name: '最后一场手术', emotion: 'fear', hiddenEmotion: 'guilt',
+      purity: 25, completeness: 45, rarity: 3, basePrice: 500,
+      description: '深夜急诊手术室的记忆——灯光明亮，护士递上手术刀，他的手指在微微颤抖，但刀落下去的瞬间稳如磐石。',
+      hiddenTruth: '手术前半小时他刚喝了半瓶廉价威士忌。不是因为他没办法，是因为不喝就下不了刀——每一次握刀都像在摸死神的手指。',
+      coreStory: '他卖了这段记忆试图证明自己是清醒的。但忘记不会让手变稳。',
+      isCorrupted: true, corruptionLevel: 70, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '门被推开时带进一股医院的气味——不是药水，是那种铁锈和酒精混合的微苦味道。' },
+      { speaker: 'customer' as const, text: '我是个外科医生...至少曾经是。我想卖掉一场手术的记忆。那场手术很...成功。但它缠着我。', choices: [
+        { text: '医生卖手术？你是想忘记什么？', defenseChange: -15, urgencyChange: 15, priceModifier: 1.2, nextStep: 2 },
+        { text: '先鉴定吧，看看你怎么定义"成功"。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他放下的记忆球在灯光下折射出一种异常的琥珀色——是酒的颜色，也是血的颜色。' },
+    ],
+    consequenceA: '三个月后，市区某医院爆出医生醉酒手术的丑闻。你没去确认是不是他，但每次看到那篇新闻都不由地想起那颗琥珀色的记忆球。',
+    consequenceB: '你拒绝了他。他愣了一下，把白大褂脱下来叠好放在你的柜台上，走了。白大褂口袋里掉出一张罚单和一枚十年的戒酒徽章。',
+    consequenceC: '你威胁要向医院举报。他说："你举报吧，我已经没有行医资格了。"但他还是多付了你一笔封口费，用口袋里皱巴巴的纸币。',
+  },
+
+  'tattoo-cat': {
+    id: 'tattoo-cat', name: '猫刺青', title: '墨水的重量',
+    appearance: '全身可见皮肤几乎都被刺青覆盖——从手背蔓延到脖颈。每张图都代表一段她不愿保留的往事。',
+    urgency: 50, concealment: 55, defense: 40,
+    memory: {
+      id: 'mem-tattoo-cat', name: '第一滴墨', emotion: 'fear', hiddenEmotion: 'anger',
+      purity: 45, completeness: 60, rarity: 2, basePrice: 300,
+      description: '第一次刺青的记忆——针尖划破皮肤的瞬间，血珠混着墨汁渗出来，她咬破了嘴唇但一滴眼泪都没流。',
+      hiddenTruth: '那不是因为勇敢。而是因为当时她正用肉体的痛去覆盖另一种更深的痛——她想把一个人的名字从皮下的脂肪里碾碎。',
+      coreStory: '每一张刺青都是一个人。卖掉第一张之后，身体上的其他图案就失去了归属感。',
+      isCorrupted: true, corruptionLevel: 40, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '门只是动了一下——进来的女人动作很轻，但皮肤上密麻的墨色图案使她像一座行走的壁画。' },
+      { speaker: 'customer' as const, text: '我想卖掉第一次纹身的记忆。它像一根刺扎在别的地方——不是皮肤，是这儿。', choices: [
+        { text: '你可以卖记忆，但刺青还是会在。', defenseChange: -10, urgencyChange: 5, priceModifier: 1.1, nextStep: 2 },
+        { text: '先鉴定里面的情感含量。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '她从口袋掏出记忆球——和刺青使用的墨水一个颜色。坐在柜台上时你能看到她手背上微小的针痕迹。' },
+    ],
+    consequenceA: '后来在街头偶然遇见她，她向你展示了一条新的空白皮肤——在右前臂上，一根细长的银钩正在上方轻摇。',
+    consequenceB: '她说不用你的钱。她需要知道这段记忆值得被收购——意味着它值得被遗忘。你看到她的眼神平静了很多。',
+    consequenceC: '你用极低的价格收走了她的记忆球。一周后你听说她在隔壁街上开了自己的纹身店，招牌上写着你店的名字，后面跟着一个问号。',
+  },
+
+  'hacker-zero': {
+    id: 'hacker-zero', name: '零', title: '无痕的信使',
+    appearance: '连帽衫遮住大半张脸，只露出下巴和微微上扬的嘴唇。手上戴着无指手套，指尖焦黄——更多的是电路板灼伤而非香烟。',
+    urgency: 70, concealment: 95, defense: 70,
+    memory: {
+      id: 'mem-hacker-zero', name: '终极密码', emotion: 'joy', hiddenEmotion: 'fear',
+      purity: 25, completeness: 40, rarity: 4, basePrice: 700,
+      description: '一段破解终极防火墙的记忆——屏幕上数据像瀑布一样滚动，手指在键盘上飞舞，最后一道防线在0.3秒内崩溃。',
+      hiddenTruth: '这不是黑客攻击。她在逃跑——从自己创建的系统里，把自己的痕迹抹去。成功的那一瞬意味着她彻底消失在了网络世界里。',
+      coreStory: '她卖掉记忆不是为了钱，是为了忘记自己的数字指纹。这样一来，即使她自己想找回原来的身份，也无法做到。',
+      isCorrupted: true, corruptionLevel: 65, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '防弹玻璃门被推开，一个戴着连帽衫的人影在门口扫了一眼店内的监控摄像头。' },
+      { speaker: 'customer' as const, text: '我有一段破解密码的记忆需要从我的意识中安全移除，你不需要知道它是什么密码，你只需要确定它能被处理。', choices: [
+        { text: '我的鉴定器能看到你不想让人看到的东西。', defenseChange: -10, urgencyChange: 15, priceModifier: 1.15, nextStep: 2 },
+        { text: '成交，我不管密码的内容。', defenseChange: 0, urgencyChange: -10, priceModifier: 0.9, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '她把手伸进夹克，掏出一颗漆黑的记忆球。它不是发光——它在吸收周围的光，像一个正在读写的数据黑洞。' },
+    ],
+    consequenceA: '三天后，你的店铺的所有电子系统被清除了任何与这段记忆相关的记录——包括鉴定器的缓存、监控视频、甚至你的个人笔记。她真的消失了。',
+    consequenceB: '你拒绝了她。她沉默地看着你，然后说:"你刚刚通过了我设计的信任测试。"她从胸前的口袋掏出一枚硬币递给你:"如果哪天你需要逃跑，它就是你的。硬币上是一个0。"',
+    consequenceC: '你威胁要公开这段破解记忆的数据。她微微一笑:"请便。24小时内你将无法证明这些数据曾经存在——系统已经在上传记忆时启动了自毁程序。当你说完时她就不见了。',
+  },
+
+  'baker-liu': {
+    id: 'baker-liu', name: '刘面点师', title: '甜的重量',
+    appearance: '胖胖的中年女性，手指沾着面粉，围裙口袋露出一截擀面杖。笑起来很暖，但眼睛从来不跟着嘴巴一起笑。',
+    urgency: 40, concealment: 35, defense: 30,
+    memory: {
+      id: 'mem-baker-liu', name: '第一炉面包', emotion: 'joy', hiddenEmotion: 'nostalgia',
+      purity: 60, completeness: 70, rarity: 1, basePrice: 180,
+      description: '清晨三点烤出生命中第一炉全麦面包的记忆——蒸汽在窗玻璃上凝结成水珠，面包从烤箱筛出的金黄色光把她的脸照得软软的。',
+      hiddenTruth: '第一个闻到那炉面包的不是她，而是她夭折的女儿——她一直相信女儿在面包房的气味里跟着她生活了很多年。',
+      coreStory: '她想卖掉记忆是因为最近那炉面包的香味变了——她不再能闻到女儿了。',
+      isCorrupted: false, corruptionLevel: 20, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '这次来的顾客是先闻到的——整个店里突然充满了新出炉面包的气息温暖而甘甜。' },
+      { speaker: 'customer' as const, text: '我想卖掉第一炉面包的记忆。那是二十八年前的事了...最近我烤面包的时候，闻到的味道好像不太对了。', choices: [
+        { text: '你卖的不是面包的香气，对吧？', defenseChange: -10, urgencyChange: 5, priceModifier: 1.1, nextStep: 2 },
+        { text: '二十八年前的记忆成色一定很好。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '她把记忆球捧出来——还真是刚烤的，表面尚有余温，像一颗刚从烤箱拿出来的面包。' },
+    ],
+    consequenceA: '几周后，你路过她的面包店买了一根法棍——酥皮一咬就碎，闻起来是普通的面包香气，非常完美，非常标准。',
+    consequenceB: '她收了回来，说也许她需要接受气味的变化。她请你吃了一个牛角包。在嘴里化开时你好像闻到了她女儿。',
+    consequenceC: '你说可以用声望去抵押收购记忆，她答应后你反手向她店铺索要分红的权利。她第二天就在门口贴上了"停业转让"。',
+  },
+
+  'clockmaker': {
+    id: 'clockmaker', name: '老钟表匠', title: '时间的齿轮',
+    appearance: '瘦得像一根发条，手指却异常沉稳。戴着一只没有镜片的金丝眼镜架，口袋里不断传出细微的滴答声。',
+    urgency: 45, concealment: 60, defense: 50,
+    memory: {
+      id: 'mem-clockmaker', name: '完美的计时', emotion: 'nostalgia', hiddenEmotion: 'guilt',
+      purity: 55, completeness: 80, rarity: 2, basePrice: 280,
+      description: '二十分钟内修复了一台中断二十年的古董钟——零件在指尖滑入正确的位置，当那二十年前就该响起的钟声重新敲响时，他哭了。',
+      hiddenTruth: '他不是在修钟。他修的是出走的妻子二十年前最后一次转动的发条——她曾说他是个停不下来的人。钟停了二十年后他决定把它修好，但修好之后它将继续停着。',
+      coreStory: '卖掉记忆后他就能把钟彻底停掉，不用再听那永远快进二十分钟的指针。',
+      isCorrupted: true, corruptionLevel: 42, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '店内的挂钟突然齐刷刷地停了一秒——然后恢复了滴答声。一个拿着工具箱的老人站在门口。' },
+      { speaker: 'customer' as const, text: '我想卖掉一分钟的记忆——不是我的一分钟，是我救回来的一个钟的百年来第一分钟。它很重。', choices: [
+        { text: '一分钟能装多少东西？', defenseChange: -10, urgencyChange: 10, priceModifier: 1.1, nextStep: 2 },
+        { text: '鉴定不会让时间快进的。', defenseChange: 0, urgencyChange: 0, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他缓缓打开一个小锡盒，里面躺着一颗秒针形状的记忆碎片——精细到你能看到秒针顶端有一个极小的名字。' },
+    ],
+    consequenceA: '他的钟表店第二天照常开了，但橱窗里最大的那台古董钟停了——然后停在同一天的上午。你路过时发现他正在拆卸另一台钟。',
+    consequenceB: '他说修好了这钟已经是值得的，不用卖。你把他的锡盒合上，推了一个下午的报废时钟——你帮他换掉了老化的发条。',
+    consequenceC: '你用极低的价钱收走了那枚秒针，当夜你店里的所有钟表都停在了同一个时间——她的名字烫在老钟表匠的妻子出生年份上。',
+  },
+
+  'taxi-qian': {
+    id: 'taxi-qian', name: '钱司机', title: '城市的地下河',
+    appearance: '穿着深蓝色制服外套，胸口的出租标志已经磨损了一半。帽子压得很低，挡风玻璃反光在他脸上留下一道长长的痕迹。',
+    urgency: 65, concealment: 45, defense: 35,
+    memory: {
+      id: 'mem-taxi-qian', name: '午夜最后一趟', emotion: 'fear', hiddenEmotion: 'sadness',
+      purity: 40, completeness: 55, rarity: 2, basePrice: 220,
+      description: '下着大雨的夜晚最后一趟客单的记忆——后座坐着一个从头到尾没说话的女人。开到目的地时他从后视镜发现后座没人。但坐垫是湿的。',
+      hiddenTruth: '那不是鬼故事。那个女人曾在大雨的河边拦下了他的车，失魂落魄——他不知道她走后去了哪儿，但第二天报纸的河岸版面上有一块下雨夜被发现的遗书。',
+      coreStory: '他只知道女人的姓氏，卖了记忆他就不用记起后座上那摊雨的重量。',
+      isCorrupted: true, corruptionLevel: 50, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '车停在店门口——引擎没熄火。一个出租车司机推门进来时外面正下着小雨，你看到他制服的右肩全是雨水。' },
+      { speaker: 'customer' as const, text: '我想卖掉一个乘客的记忆——就一个乘客，就一趟跑完，后座是空的但我开了全程，一直在说话你知道吗？', choices: [
+        { text: '她在说什么？', defenseChange: -15, urgencyChange: 10, priceModifier: 1.2, nextStep: 2 },
+        { text: '开车跑过的路别留着不开的车窗。', defenseChange: 0, urgencyChange: 5, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他从口袋掏出一枚还在滴水的记忆球——像一颗泡在雨水中的街灯，光透过它映在墙上晃得不正常。' },
+    ],
+    consequenceA: '几天夜里你路过他以前常停车的街角，看到出租车队换了一代新车——他的车已经不在那里了。',
+    consequenceB: '他想了想说不用卖了，也许记住一个人没那么可怕。走之前给了你一把印着出租车公司标志的旧打火机。',
+    consequenceC: '你威胁把行车记录译成公共档案。他把记忆球往你的柜台上一放，拿起钥匙慢慢转身——走出去坐进驾驶座，发动了，雨刮器来回刷了一整夜。',
+  },
+
+  'shadow-yao': {
+    id: 'shadow-yao', name: '影子药贩', title: '黑暗中的药方',
+    appearance: '脸色苍白，瞳孔不自然地对光反应缓慢——长期使用某种地下神经抑制剂的副作用。衣服口袋鼓鼓囊囊，但装着的是空药瓶。',
+    urgency: 85, concealment: 80, defense: 50,
+    memory: {
+      id: 'mem-shadow-yao', name: '遗忘的药方', emotion: 'fear', hiddenEmotion: 'guilt',
+      purity: 20, completeness: 35, rarity: 3, basePrice: 550,
+      description: '一段地下药房的记忆——刺鼻的甲醇气味，黑暗中递过来的药瓶，标签上写着"永远忘掉一切"——他当场打开，倒出三粒在手心，然后犹豫了。',
+      hiddenTruth: '他是来卖犹豫的，不是来卖空瓶。他没有吃药，是因为一旦忘记他曾经卖过的那些药，就再也没有理由停止制药。',
+      coreStory: '卖掉这一段犹豫，他就能毫无愧意地继续制售神经抑制剂——成为真正的药贩而不是罪人。',
+      isCorrupted: true, corruptionLevel: 80, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '浓重的化学甜味比本人先进门。一个人影猫着腰走了进来，口袋里的空药瓶碰撞出奇怪的音调。' },
+      { speaker: 'customer' as const, text: '我有一段犹豫的记忆——不是一瓶药，而是一瞬间的...算了我怎么说你也不会懂。我要把它卖掉，让它停。', choices: [
+        { text: '犹豫比药值钱，你知道的。', defenseChange: -10, urgencyChange: 10, priceModifier: 1.1, nextStep: 2 },
+        { text: '我鉴定后会知道你的犹豫是为了什么。', defenseChange: 0, urgencyChange: 10, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他放在柜台上的是一个空的棕色药瓶——里面没有药片，但你听到它嗡鸣了一声，像是里面有活的液体。' },
+    ],
+    consequenceA: '几周后报纸上报道了一处非法地下药房被端，主谋在逃。你认出警方公布的药瓶——和柜台上那个一模一样。他没有犹豫就跑了。',
+    consequenceB: '你把空药瓶推回给他。他低头看着瓶子，"也许我还需要这个犹豫。"他把瓶子放回口袋，推门出去时口袋不再响了。',
+    consequenceC: '你威胁向警方匿名举报——不仅举报他，还举报他的顾客名单。他在你写举报电话时把一整沓钞票放在你面前，然后抓起药瓶冲进雨里。',
+  },
+
+  'copier-aji': {
+    id: 'copier-aji', name: '阿纪', title: '复印机前的幽灵',
+    appearance: '带着名片到处分发但一张也发不完的年轻人，内袋里揣着一台便携复印机——每次复印都会发出很轻的咔哒声。',
+    urgency: 55, concealment: 40, defense: 30,
+    memory: {
+      id: 'mem-copier-aji', name: '四千次复印', emotion: 'sadness', hiddenEmotion: 'fear',
+      purity: 50, completeness: 65, rarity: 2, basePrice: 260,
+      description: '第一天上班的记忆——复印机咔哒咔哒的声音像子弹，他被指派在大办公室角落复印四千份文件。灯从头顶照下来，文件越复印越重。',
+      hiddenTruth: '他复印的不是文件——是另一个人的合同。他偷偷记下了上面的数字，下载成一个梦，每晚在呼吸的咔哒声中重新尝试谈判。',
+      coreStory: '卖掉这段记忆他就能彻底放弃——不去想那笔他永远拿不回来的提成。',
+      isCorrupted: false, corruptionLevel: 30, daysStored: 0,
+    },
+    dialog: [
+      { speaker: 'narrator' as const, text: '咔哒——咔哒——你听见复印机的声音从门口传来。一个年轻人站在那，还在不停地按口袋里的便携复印机。' },
+      { speaker: 'customer' as const, text: '这是一段关于复印的记忆——一共四千次复印，四千张纸。我想卖掉它们，这样我就能停掉复印机的声音。', choices: [
+        { text: '四千份文件里有没有你自己的？', defenseChange: -10, urgencyChange: 10, priceModifier: 1.1, nextStep: 2 },
+        { text: '记忆就是不断复印的声音也挺烦的。', defenseChange: 0, urgencyChange: 5, priceModifier: 1.0, nextStep: 2 },
+      ]},
+      { speaker: 'narrator' as const, text: '他从复印机里抽出一张刚复印出来的卡片——纸上复印着一颗记忆球的影像，墨还没干。' },
+    ],
+    consequenceA: '几天后你的店门口出现了一份未署名的复印文件——上面列着他从那些合同里偷看到的全部数字，排成一个笑脸。',
+    consequenceB: '他把复印件收回去，说也许复印机的声音有一天会自己停。临走时把便携复印机留在你柜台上——里面还有最后一张空白纸。',
+    consequenceC: '你威胁说他的公司会知道那些复印下的数字。他低头把口袋里的名片全掏出来给了你——"这些都给你，你打电话的时候帮我发一下吧。"',
+  },
 }
 
 export function getCustomerById(id: string): Customer | undefined {

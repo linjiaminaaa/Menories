@@ -11,6 +11,7 @@ export function TradingScreen() {
   const negotiatedPrice = useGameStore((s) => s.negotiatedPrice)
   const revealedTruth = useGameStore((s) => s.revealedTruth)
   const executeTrade = useGameStore((s) => s.executeTrade)
+  const abortCustomer = useGameStore((s) => s.abortCustomer)
   const money = useGameStore((s) => s.money)
 
   if (!currentCustomer) return null
@@ -182,7 +183,7 @@ export function TradingScreen() {
       </View>
 
       {/* 交易操作 */}
-      <View className="px-4 safe-bottom-lg">
+      <View className="px-4 content-bottom-spacing">
         <Text className="block text-sm text-[#8888aa] mb-3 font-semibold">选择你的行动</Text>
         <View className="flex flex-col gap-3">
           {actions.map((action) => (
@@ -213,6 +214,19 @@ export function TradingScreen() {
               )}
             </View>
           ))}
+        </View>
+      </View>
+
+      {/* 底部中止按钮 */}
+      <View className="game-bottom-bar">
+        <View className="bottom-bar-row">
+          <View
+            className="game-secondary-btn"
+            style={{ justifyContent: 'center', flex: 1, borderColor: '#ff334444' }}
+            onClick={abortCustomer}
+          >
+            <Text style={{ color: '#ff3344', fontSize: '14px' }}>中止交易</Text>
+          </View>
         </View>
       </View>
     </View>

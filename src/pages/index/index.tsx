@@ -6,6 +6,7 @@ import { AppraisalScreen } from '@/components/game/appraisal-screen'
 import { TradingScreen } from '@/components/game/trading-screen'
 import { ResultScreen } from '@/components/game/result-screen'
 import { StorageScreen } from '@/components/game/storage-screen'
+import { ClosingScreen } from '@/components/game/closing-screen'
 import './index.css'
 
 export default function Index() {
@@ -34,6 +35,7 @@ export default function Index() {
       {phase === 'appraisal' && <AppraisalScreen />}
       {phase === 'trading' && <TradingScreen />}
       {phase === 'result' && <ResultScreen />}
+      {phase === 'closing' && <ClosingScreen />}
       {phase === 'storage' && (
         <StorageScreen
           onSellMemory={handleSellMemory}

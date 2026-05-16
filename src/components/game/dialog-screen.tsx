@@ -8,6 +8,7 @@ export function DialogScreen() {
   const dialogIndex = useGameStore((s) => s.dialogIndex)
   const advanceDialog = useGameStore((s) => s.advanceDialog)
   const setPhase = useGameStore((s) => s.setPhase)
+  const abortCustomer = useGameStore((s) => s.abortCustomer)
 
   const [displayedText, setDisplayedText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -205,15 +206,15 @@ export function DialogScreen() {
         )}
       </View>
 
-      {/* 底部返回按钮 */}
+      {/* 底部中止按钮 */}
       <View className="game-bottom-bar">
         <View className="bottom-bar-row">
           <View
             className="game-secondary-btn"
-            style={{ justifyContent: 'center', flex: 1 }}
-            onClick={() => setPhase('hub')}
+            style={{ justifyContent: 'center', flex: 1, borderColor: '#ff334444' }}
+            onClick={abortCustomer}
           >
-            <Text style={{ color: '#444466', fontSize: '14px' }}>返回典当行</Text>
+            <Text style={{ color: '#ff3344', fontSize: '14px' }}>中止交易</Text>
           </View>
         </View>
       </View>
