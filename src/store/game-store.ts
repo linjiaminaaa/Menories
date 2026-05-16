@@ -25,22 +25,6 @@ export const EMOTION_LABELS: Record<EmotionType, string> = {
   guilt: '罪恶',
 }
 
-export interface Impurity {
-  id: string
-  x: number
-  y: number
-  size: number
-  removed: boolean
-}
-
-export interface SpectrumBand {
-  emotion: EmotionType
-  label: string
-  color: string
-  current: number
-  target: number
-}
-
 export interface Memory {
   id: string
   name: string
@@ -114,12 +98,15 @@ interface GameState {
   dialogIndex: number
   revealedTruth: boolean
 
-  // 鉴定状态
-  spectrumBands: SpectrumBand[]
-  impurities: Impurity[]
+  // 鉴定状态 - 共鸣舱
+  resonanceShellTotal: number
+  resonanceShellRemaining: number
+  resonanceCombo: number
+  resonanceHits: number
+  resonanceNoiseHits: number
+  resonancePhase: 'idle' | 'pulsing' | 'complete'
   appraisalPurity: number
   appraisalCompleteness: number
-  impurityMisses: number
 
   // 交易状态
   negotiatedPrice: number
@@ -149,9 +136,9 @@ interface GameState {
   dismissCustomer: () => void
   closeShop: () => void
   advanceDialog: (choiceIndex?: number) => void
-  adjustBand: (emotion: EmotionType, delta: number) => void
-  removeImpurity: (id: string) => void
-  missImpurity: () => void
+  initResonance: () => void
+  resonanceHit: (quality: 'perfect' | 'good', wasNoise: boolean) => void
+  resonanceMiss: () => void
   completeAppraisal: () => void
   setNegotiatedPrice: (price: number) => void
   executeTrade: (action: TradeAction) => void
@@ -177,11 +164,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   dialogIndex: 0,
   revealedTruth: false,
 
-  spectrumBands: [],
-  impurities: [],
+  resonanceShellTotal: 0,
+  resonanceShellRemaining: 0,
+  resonanceCombo: 0,
+  resonanceHits: 0,
+  resonanceNoiseHits: 0,
+  resonancePhase: 'idle',
   appraisalPurity: 0,
   appraisalCompleteness: 100,
-  impurityMisses: 0,
 
   negotiatedPrice: 0,
   finalAction: null,
@@ -224,42 +214,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     const customer = getCustomerById(customerId)
     if (!customer) return
 
-    const emotionOrder: EmotionType[] = ['sadness', 'anger', 'joy', 'fear', 'nostalgia', 'guilt']
-    const labels = ['悲', '怒', '喜', '惧', '怀', '罪']
-    const spectrumBands: SpectrumBand[] = emotionOrder.map((emo, i) => {
-      let target: number
-      if (emo === customer.memory.emotion) {
-        target = 60 + Math.floor(Math.random() * 20)
-      } else if (emo === customer.memory.hiddenEmotion) {
-        target = 65 + Math.floor(Math.random() * 20)
-      } else {
-        target = Math.floor(Math.random() * 35)
-      }
-      return { emotion: emo, label: labels[i], color: EMOTION_COLORS[emo], current: 0, target }
-    })
-
-    const impurityCount = 3 + Math.floor(customer.memory.corruptionLevel / 25)
-    const impurities: Impurity[] = []
-    for (let i = 0; i < impurityCount; i++) {
-      impurities.push({
-        id: `imp-${i}`,
-        x: 15 + Math.random() * 70,
-        y: 15 + Math.random() * 70,
-        size: 8 + Math.random() * 12,
-        removed: false,
-      })
-    }
+    // Resonance shell layers: based on corruption level (1-5 layers)
+    const shellTotal = 1 + Math.floor(customer.memory.corruptionLevel / 20)
 
     set({
       phase: 'dialog',
       currentCustomer: customer,
       dialogIndex: 0,
       revealedTruth: false,
-      spectrumBands,
-      impurities,
+      resonanceShellTotal: shellTotal,
+      resonanceShellRemaining: shellTotal,
+      resonanceCombo: 0,
+      resonanceHits: 0,
+      resonanceNoiseHits: 0,
+      resonancePhase: 'idle',
       appraisalPurity: customer.memory.purity,
       appraisalCompleteness: 100,
-      impurityMisses: 0,
       negotiatedPrice: 0,
       finalAction: null,
       abortedCustomerId: null,
@@ -340,79 +310,73 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  adjustBand: (emotion, delta) => {
+  initResonance: () => {
+    set({ resonancePhase: 'pulsing' })
+    get().addLog('共鸣舱启动——记忆接入诊断系统', 'info')
+  },
+
+  resonanceHit: (quality: 'perfect' | 'good', wasNoise: boolean) => {
     const state = get()
-    const bands = state.spectrumBands.map((b) => {
-      if (b.emotion !== emotion) return b
-      const next = Math.max(0, Math.min(100, b.current + delta))
-      return { ...b, current: next }
-    })
-    set({ spectrumBands: bands })
+    if (state.resonancePhase !== 'pulsing') return
 
-    // Recalculate purity from band matches
-    if (!state.currentCustomer) return
-    let totalMatch = 0
-    let totalWeight = 0
-    bands.forEach((b) => {
-      const match = Math.max(0, 100 - Math.abs(b.current - b.target) * 2)
-      let weight = 1
-      if (b.emotion === state.currentCustomer!.memory.emotion) weight = 2.5
-      else if (b.emotion === state.currentCustomer!.memory.hiddenEmotion) weight = 2
-      totalMatch += match * weight
-      totalWeight += weight
-    })
-    const avgMatch = totalWeight > 0 ? totalMatch / totalWeight : 0
-    const basePurity = state.currentCustomer.memory.purity ?? 50
-    const newPurity = Math.round(basePurity * (0.3 + avgMatch / 140))
-    set({ appraisalPurity: Math.min(100, newPurity) })
+    if (wasNoise) {
+      // Hit a noise pulse — penalty
+      const newCompleteness = Math.max(20, state.appraisalCompleteness - 15)
+      set({
+        resonanceNoiseHits: state.resonanceNoiseHits + 1,
+        resonanceCombo: 0,
+        appraisalCompleteness: newCompleteness,
+      })
+      get().addLog('杂音脉冲！记忆完整性受损...', 'danger')
+      return
+    }
 
-    // Check if hidden emotion band is matched
-    const hiddenBand = bands.find((b) => b.emotion === state.currentCustomer!.memory.hiddenEmotion)
-    if (hiddenBand && !state.revealedTruth) {
-      const hiddenDiff = Math.abs(hiddenBand.current - hiddenBand.target)
-      if (hiddenDiff < 10) {
-        set({ revealedTruth: true })
-        get().addLog('频谱共振成功！检测到隐藏的情感波动...', 'success')
-      }
+    // Successful hit
+    const layersStripped = quality === 'perfect' ? 2 : 1
+    const newRemaining = Math.max(0, state.resonanceShellRemaining - layersStripped)
+    const newCombo = state.resonanceCombo + 1
+    const purityBonus = quality === 'perfect' ? 12 : 6
+    const comboBonus = newCombo > 1 ? newCombo * 2 : 0
+
+    set({
+      resonanceShellRemaining: newRemaining,
+      resonanceCombo: newCombo,
+      resonanceHits: state.resonanceHits + 1,
+      appraisalPurity: Math.min(100, state.appraisalPurity + purityBonus + comboBonus),
+    })
+
+    if (quality === 'perfect') {
+      get().addLog(`完美共振！×${newCombo} 连击`, 'success')
+    } else {
+      get().addLog('共振成功，记忆外壳剥落', 'success')
+    }
+
+    // All layers stripped → truth revealed
+    if (newRemaining <= 0 && !state.revealedTruth) {
+      set({ revealedTruth: true, resonancePhase: 'complete' })
+      get().addLog('所有外壳已剥离！检测到隐藏情感波动...', 'success')
     }
   },
 
-  removeImpurity: (id) => {
+  resonanceMiss: () => {
     const state = get()
-    const newImpurities = state.impurities.map((imp) =>
-      imp.id === id ? { ...imp, removed: true } : imp
-    )
-    const removedCount = newImpurities.filter((i) => i.removed).length
-    const totalCount = newImpurities.length
-    const corruptionReduction = (removedCount / totalCount) * state.currentCustomer!.memory.corruptionLevel
-
+    if (state.resonancePhase !== 'pulsing') return
     set({
-      impurities: newImpurities,
-      appraisalPurity: Math.min(100, state.appraisalPurity + corruptionReduction * 0.3),
+      resonanceCombo: 0,
+      appraisalCompleteness: Math.max(20, state.appraisalCompleteness - 5),
     })
-    get().addLog('清除了一处精神污染', 'success')
-  },
-
-  missImpurity: () => {
-    const state = get()
-    const newMisses = state.impurityMisses + 1
-    const completenessLoss = newMisses * 5
-    set({
-      impurityMisses: newMisses,
-      appraisalCompleteness: Math.max(20, 100 - completenessLoss),
-    })
-    get().addLog('误触记忆本体，完整度下降！', 'danger')
+    get().addLog('错失共振窗口，完整度略微下降', 'warning')
   },
 
   completeAppraisal: () => {
     const state = get()
-    // Calculate completeness from impurities removed
-    const totalImpurities = state.impurities.length
-    const removedCount = state.impurities.filter((i) => i.removed).length
-    const impurityCompleteness = totalImpurities > 0 ? (removedCount / totalImpurities) * 100 : 100
-    // Calculate purity from band matching (already set in apprasalPurity by adjustBand)
     const purity = state.appraisalPurity
-    const completeness = Math.round((state.appraisalCompleteness + impurityCompleteness) / 2)
+    const shellRatio = state.resonanceShellTotal > 0
+      ? (state.resonanceShellTotal - state.resonanceShellRemaining) / state.resonanceShellTotal
+      : 1
+    const completeness = Math.round(
+      state.appraisalCompleteness * (0.7 + shellRatio * 0.3)
+    )
     const rarity = state.currentCustomer?.memory.rarity ?? 1
     const marketRate = 0.8 + Math.random() * 0.4
     const basePrice = state.currentCustomer?.memory.basePrice ?? 100

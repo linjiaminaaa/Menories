@@ -1,418 +1,319 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { View, Text } from '@tarojs/components'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useGameStore, EMOTION_COLORS, EMOTION_LABELS } from '@/store/game-store'
 
+const PULSE_INTERVAL = 2200
+const HIT_WINDOW_START = 1300
+const HIT_WINDOW_END = 1900
+const PERFECT_START = 1500
+const PERFECT_END = 1700
+const NOISE_CHANCE = 0.25
+
+type PulseState = 'idle' | 'approaching' | 'hit-ready' | 'missed'
+
 export function AppraisalScreen() {
   const currentCustomer = useGameStore((s) => s.currentCustomer)
-  const spectrumBands = useGameStore((s) => s.spectrumBands)
-  const impurities = useGameStore((s) => s.impurities)
   const appraisalPurity = useGameStore((s) => s.appraisalPurity)
   const appraisalCompleteness = useGameStore((s) => s.appraisalCompleteness)
   const revealedTruth = useGameStore((s) => s.revealedTruth)
-  const adjustBand = useGameStore((s) => s.adjustBand)
-  const removeImpurity = useGameStore((s) => s.removeImpurity)
-  const missImpurity = useGameStore((s) => s.missImpurity)
+  const shellTotal = useGameStore((s) => s.resonanceShellTotal)
+  const shellRemaining = useGameStore((s) => s.resonanceShellRemaining)
+  const comboCount = useGameStore((s) => s.resonanceCombo)
+  const resonancePhase = useGameStore((s) => s.resonancePhase)
+  const initResonance = useGameStore((s) => s.initResonance)
+  const resonanceHit = useGameStore((s) => s.resonanceHit)
+  const resonanceMiss = useGameStore((s) => s.resonanceMiss)
   const completeAppraisal = useGameStore((s) => s.completeAppraisal)
   const abortCustomer = useGameStore((s) => s.abortCustomer)
 
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1)
-  const [step1Done, setStep1Done] = useState(false)
-  const [removedImpurities, setRemovedImpurities] = useState<Set<string>>(new Set())
+  const [pulseStart, setPulseStart] = useState(0)
+  const [pulseState, setPulseState] = useState<PulseState>('idle')
+  const [isNoise, setIsNoise] = useState(false)
+  const [pulseProgress, setPulseProgress] = useState(0)
+  const [showPerfect, setShowPerfect] = useState(false)
+  const [comboPop, setComboPop] = useState(false)
+  const [hitResult, setHitResult] = useState<'perfect' | 'good' | 'miss' | 'noise' | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startedRef = useRef(false)
+  const pulseIdxRef = useRef(0)
 
-  const handleImpurityTap = useCallback((impId: string) => {
-    if (removedImpurities.has(impId)) return
-    setRemovedImpurities((prev) => new Set(prev).add(impId))
-    removeImpurity(impId)
-  }, [removedImpurities, removeImpurity])
+  useEffect(() => {
+    if (!startedRef.current) {
+      startedRef.current = true
+      initResonance()
+      startNewPulse()
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [])
 
-  const handleOrbTap = useCallback(() => {
-    missImpurity()
-  }, [missImpurity])
+  const startNewPulse = () => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    setHitResult(null)
+    const now = Date.now()
+    const noise = Math.random() < NOISE_CHANCE
+    setIsNoise(noise)
+    setPulseState('approaching')
+    setPulseStart(now)
+    setPulseProgress(0)
+    timerRef.current = setInterval(() => {
+      const elapsed = Date.now() - now
+      const progress = Math.min(100, (elapsed / PULSE_INTERVAL) * 100)
+      setPulseProgress(progress)
+      if (elapsed >= PULSE_INTERVAL) {
+        setPulseState('missed'); clearInterval(timerRef.current!)
+        if (!noise) resonanceMiss()
+        setTimeout(() => { pulseIdxRef.current++; startNewPulse() }, 500)
+      } else if (elapsed >= HIT_WINDOW_START && elapsed < HIT_WINDOW_END) {
+        setPulseState('hit-ready')
+      } else if (elapsed >= HIT_WINDOW_END) {
+        setPulseState('missed'); clearInterval(timerRef.current!)
+        if (!noise) resonanceMiss()
+        setTimeout(() => { pulseIdxRef.current++; startNewPulse() }, 500)
+      }
+    }, 30)
+  }
 
-  const handleComplete = useCallback(() => {
-    completeAppraisal()
-  }, [completeAppraisal])
+  const handleTap = useCallback(() => {
+    if (!pulseStart || resonancePhase !== 'pulsing' || pulseState !== 'hit-ready') return
+    if (isNoise) {
+      resonanceHit('good', true)
+      setHitResult('noise'); setShowPerfect(false)
+      if (timerRef.current) clearInterval(timerRef.current)
+      setTimeout(() => { pulseIdxRef.current++; startNewPulse() }, 700)
+      return
+    }
+    const elapsed = Date.now() - pulseStart
+    if (elapsed >= PERFECT_START && elapsed <= PERFECT_END) {
+      resonanceHit('perfect', false)
+      setHitResult('perfect'); setShowPerfect(true); setComboPop(true)
+      setTimeout(() => setShowPerfect(false), 600)
+      setTimeout(() => setComboPop(false), 300)
+    } else {
+      resonanceHit('good', false)
+      setHitResult('good'); setShowPerfect(false)
+    }
+    if (timerRef.current) clearInterval(timerRef.current)
+    setTimeout(() => { pulseIdxRef.current++; startNewPulse() }, 500)
+  }, [pulseStart, isNoise, pulseState, resonancePhase, resonanceHit, resonanceMiss])
+
+  const handleComplete = useCallback(() => completeAppraisal(), [completeAppraisal])
 
   if (!currentCustomer) return null
 
   const emotionColor = EMOTION_COLORS[currentCustomer.memory.emotion]
   const hiddenColor = EMOTION_COLORS[currentCustomer.memory.hiddenEmotion]
-  const allImpuritiesRemoved = impurities.every((i) => i.removed)
-  const remainingImpurities = impurities.filter((i) => !i.removed).length
-
-  const totalMatch = spectrumBands.reduce((sum, b) => {
-    const match = Math.max(0, 100 - Math.abs(b.current - b.target) * 2)
-    return sum + match
-  }, 0)
-  const avgMatch = spectrumBands.length > 0 ? totalMatch / spectrumBands.length : 0
-
-  const hiddenBand = spectrumBands.find((b) => b.emotion === currentCustomer.memory.hiddenEmotion)
-  const hiddenMatched = hiddenBand ? Math.abs(hiddenBand.current - hiddenBand.target) < 10 : false
-  const isWellMatched = avgMatch > 60
-
-  const advanceToStep2 = () => {
-    setStep1Done(true)
-    setCurrentStep(2)
-  }
+  const strippedCount = shellTotal - shellRemaining
+  const hitZoneStart = (HIT_WINDOW_START / PULSE_INTERVAL) * 100
+  const hitZoneEnd = (HIT_WINDOW_END / PULSE_INTERVAL) * 100
+  const perfectStart = (PERFECT_START / PULSE_INTERVAL) * 100
+  const perfectEnd = (PERFECT_END / PULSE_INTERVAL) * 100
 
   return (
-    <View className="min-h-screen bg-[#0a0a0f] scanline-overlay">
-      {/* 顶部信息 */}
-      <View className="p-4 pb-2">
-        <View className="flex flex-row items-center justify-between mb-2">
-          <Text className="block text-sm font-semibold text-[#00f0ff]">记忆鉴定台</Text>
-          <Badge variant="outline" className="border-[#2a2a40] text-[#8888aa] text-xs">
-            {currentCustomer.memory.name}
-          </Badge>
+    <View className="min-h-screen bg-[#0a0a0f] scanline-overlay flex flex-col">
+      <View className="crt-overlay" />
+
+      {/* === 上部：紧凑信息区（非交互） === */}
+      <View className="px-4 pt-3 pb-1" style={{ position: 'relative', zIndex: 10 }}>
+        {/* 标题 + 纯度/完整度/稀有度 一行 */}
+        <View className="flex flex-row items-center gap-2 mb-2">
+          <View className="flex flex-row items-center gap-1 flex-1">
+            <Text className="block text-xs font-semibold text-[#00f0ff]">共鸣诊断舱</Text>
+            <Badge variant="outline" className="border-[#2a2a40] text-[#8888aa] text-xs ml-1">
+              {currentCustomer.memory.name}
+            </Badge>
+          </View>
+          <Text className="block text-xs font-mono" style={{ color: emotionColor }}>纯{Math.round(appraisalPurity)}%</Text>
+          <Text className="block text-xs font-mono" style={{ color: appraisalCompleteness > 60 ? '#00ff88' : '#ffaa00' }}>整{Math.round(appraisalCompleteness)}%</Text>
+          <Text className="block text-xs font-mono text-[#ffcc00]">{'★'.repeat(currentCustomer.memory.rarity)}</Text>
         </View>
 
-        {/* 鉴定指标 */}
-        <View className="flex flex-row gap-2 mb-3">
-          <View className="flex-1 bg-[#141420] rounded-lg p-2 border border-[#2a2a40]">
-            <Text className="block text-xs text-[#8888aa] mb-1">纯度</Text>
-            <Text className="block text-lg font-mono" style={{ color: emotionColor }}>
-              {Math.round(appraisalPurity)}%
-            </Text>
-          </View>
-          <View className="flex-1 bg-[#141420] rounded-lg p-2 border border-[#2a2a40]">
-            <Text className="block text-xs text-[#8888aa] mb-1">完整度</Text>
-            <Text className="block text-lg font-mono" style={{ color: appraisalCompleteness > 60 ? '#00ff88' : '#ffaa00' }}>
-              {Math.round(appraisalCompleteness)}%
-            </Text>
-          </View>
-          <View className="flex-1 bg-[#141420] rounded-lg p-2 border border-[#2a2a40]">
-            <Text className="block text-xs text-[#8888aa] mb-1">稀有度</Text>
-            <Text className="block text-lg font-mono text-[#ffcc00]">
-              {'★'.repeat(currentCustomer.memory.rarity)}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* 记忆球可视化 */}
-      <View className="px-4 mb-4">
+        {/* 记忆球小窗 + 外壳/连击指示 */}
         <Card className="bg-[#141420] border-[#2a2a40]">
-          <CardContent className="p-4">
-            <View className="flex items-center justify-center mb-3">
-              <View
-                className="relative w-48 h-48 rounded-full orb-glow"
-                style={{ '--orb-color': revealedTruth ? hiddenColor : emotionColor } as React.CSSProperties}
-                onClick={currentStep === 2 ? handleOrbTap : undefined}
-              >
+          <CardContent className="p-2">
+            <View className="flex flex-row items-center gap-3">
+              {/* 迷你记忆球 */}
+              <View className="relative flex items-center justify-center" style={{ width: 60, height: 60, flexShrink: 0 }}>
+                {showPerfect && <View className="perfect-flash" />}
                 <View
-                  className="absolute inset-2 rounded-full orb-flow-bg"
+                  className="resonance-core rounded-full flex items-center justify-center"
                   style={{
-                    background: `radial-gradient(circle at 40% 40%, ${revealedTruth ? hiddenColor : emotionColor}88, ${revealedTruth ? hiddenColor : emotionColor}22, #0a0a0f)`,
-                    backgroundSize: '200% 200%',
+                    width: 50, height: 50,
+                    backgroundColor: `${revealedTruth ? hiddenColor : emotionColor}22`,
+                    border: `1.5px solid ${revealedTruth ? hiddenColor : emotionColor}66`,
+                    '--core-color': revealedTruth ? hiddenColor : emotionColor,
+                  } as React.CSSProperties}
+                >
+                  <View className="w-4 h-4 rounded-full"
+                    style={{ backgroundColor: `${revealedTruth ? hiddenColor : emotionColor}88` }}
+                  />
+                </View>
+              </View>
+
+              {/* 外壳 + 信噪比 + combo */}
+              <View className="flex-1 flex flex-col gap-2">
+                <View className="flex flex-row items-center gap-2">
+                  <Text className="block text-xs text-[#8888aa] w-10">外壳</Text>
+                  <View className="flex flex-row gap-1 flex-1">
+                    {Array.from({ length: shellTotal }).map((_, i) => (
+                      <View key={i} className="flex-1 h-2 rounded-full"
+                        style={{ backgroundColor: i < strippedCount ? '#00ff88' : '#2a2a40' }}
+                      />
+                    ))}
+                  </View>
+                  <Text className="block text-xs font-mono text-[#00f0ff] w-8 text-right">{strippedCount}/{shellTotal}</Text>
+                </View>
+                <View className="flex flex-row items-center gap-2">
+                  <Text className="block text-xs text-[#8888aa] w-10">连击</Text>
+                  <Text className={`block text-base font-mono ${comboPop ? 'combo-pop' : ''}`}
+                    style={{
+                      color: comboCount > 3 ? '#ffcc00' : comboCount > 1 ? '#00ff88' : '#8888aa',
+                      textShadow: comboCount > 3 ? '0 0 8px rgba(255,204,0,0.4)' : undefined,
+                    }}
+                  >×{comboCount}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 涟漪预览（迷你） */}
+            {resonancePhase === 'pulsing' && (
+              <View className="relative h-3 mt-2 bg-[#0a0a0f] rounded-full overflow-hidden">
+                <View className="absolute top-0 bottom-0 rounded-full"
+                  style={{
+                    left: `${hitZoneStart}%`,
+                    width: `${hitZoneEnd - hitZoneStart}%`,
+                    backgroundColor: isNoise ? 'rgba(255,51,68,0.25)' : 'rgba(0,255,136,0.2)',
                   }}
                 />
-                <View className="absolute top-3 left-6 w-8 h-4 rounded-full blur-sm" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
-
-                {/* 杂质斑点 — 仅步骤2显示 */}
-                {currentStep === 2 && impurities.map((imp) => (
-                  !imp.removed ? (
-                    <View
-                      key={imp.id}
-                      className={`absolute rounded-full impurity-alive ${removedImpurities.has(imp.id) ? 'impurity-dying' : ''}`}
-                      style={{
-                        left: `${imp.x}%`,
-                        top: `${imp.y}%`,
-                        width: `${Math.max(imp.size, 22)}px`,
-                        height: `${Math.max(imp.size, 22)}px`,
-                        backgroundColor: '#1a0a0a',
-                        border: '1px solid #330000',
-                        transform: 'translate(-50%, -50%)',
-                        zIndex: 10,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleImpurityTap(imp.id)
-                      }}
-                    />
-                  ) : null
-                ))}
-              </View>
-            </View>
-
-            {/* 情感频谱 */}
-            <View className="flex flex-row gap-1 mb-2">
-              <Text className="block text-xs text-[#8888aa]">情感频谱:</Text>
-              <View className="flex-1 flex flex-row gap-1">
-                {(['sadness', 'anger', 'joy', 'fear', 'nostalgia', 'guilt'] as const).map((emo) => {
-                  const isActive = currentCustomer.memory.emotion === emo || (revealedTruth && currentCustomer.memory.hiddenEmotion === emo)
-                  return (
-                    <View
-                      key={emo}
-                      className="h-2 flex-1 rounded-full"
-                      style={{
-                        backgroundColor: isActive ? EMOTION_COLORS[emo] : '#1a1a2e',
-                        opacity: isActive ? 0.8 : 0.3,
-                      }}
-                    />
-                  )
-                })}
-              </View>
-            </View>
-            <View className="flex flex-row justify-between">
-              {(['悲', '怒', '喜', '惧', '怀', '罪'] as const).map((label, i) => (
-                <Text key={i} className="block text-xs text-[#444466]">{label}</Text>
-              ))}
-            </View>
-
-            {/* 隐藏真相揭示 */}
-            {revealedTruth && (
-              <View className="mt-3 p-3 rounded-lg border fade-in-up" style={{ borderColor: 'rgba(255,0,102,0.3)', backgroundColor: 'rgba(255,0,102,0.05)' }}>
-                <Text className="block text-xs text-[#ff0066] font-semibold mb-1">检测到隐藏情感</Text>
-                <Text className="block text-xs text-[#ff88aa]">
-                  表层情感：{EMOTION_LABELS[currentCustomer.memory.emotion]} →
-                  深层情感：{EMOTION_LABELS[currentCustomer.memory.hiddenEmotion]}
-                </Text>
-                <Text className="block text-xs text-[#8888aa] mt-1">
-                  {currentCustomer.memory.hiddenTruth}
-                </Text>
+                <View className="absolute top-0 bottom-0 w-1 rounded-full"
+                  style={{
+                    left: `${pulseProgress}%`,
+                    backgroundColor: pulseState === 'hit-ready' ? (isNoise ? '#ff3344' : '#00ff88') : '#00f0ff',
+                    boxShadow: pulseState === 'hit-ready' ? `0 0 6px ${isNoise ? '#ff3344' : '#00ff88'}` : 'none',
+                  }}
+                />
               </View>
             )}
           </CardContent>
         </Card>
       </View>
 
-      {/* 步骤指示器 */}
-      <View className="px-4 mb-3">
-        <View className="flex flex-row items-center gap-0">
-          {/* Step 1 */}
-          <View className="flex flex-col items-center flex-1">
-            <View className="flex flex-row items-center gap-2 mb-1">
-              <View
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                style={{
-                  backgroundColor: currentStep === 1 ? '#00f0ff' : step1Done ? '#00ff88' : '#2a2a40',
-                  color: currentStep === 1 ? '#0a0a0f' : '#fff',
-                }}
-              >
-                <Text className="block text-xs font-bold">{step1Done ? '✓' : '1'}</Text>
-              </View>
-              <Text
-                className="block text-sm font-semibold"
-                style={{ color: currentStep === 1 ? '#00f0ff' : step1Done ? '#00ff88' : '#444466' }}
-              >
-                频谱均衡
-              </Text>
-            </View>
-            {currentStep === 1 && (
-              <View className="h-1 w-full rounded-full" style={{ backgroundColor: '#00f0ff' }} />
-            )}
-            {step1Done && currentStep === 2 && (
-              <View className="h-1 w-full rounded-full" style={{ backgroundColor: '#00ff88' }} />
-            )}
-            {!step1Done && currentStep === 2 && (
-              <View className="h-1 w-full rounded-full" style={{ backgroundColor: '#2a2a40' }} />
-            )}
+      {/* === 中部：共振大按钮（拇指热区） === */}
+      <View className="flex-1 flex flex-col items-center justify-center px-4" style={{ position: 'relative', zIndex: 10, minHeight: 180 }}>
+        {/* 状态提示 */}
+        <View className="mb-2" style={{ minHeight: 24 }}>
+          {resonancePhase === 'pulsing' && pulseState === 'approaching' && (
+            <Text className="block text-xs text-[#8888aa] text-center">
+              {isNoise ? '⚠ 杂音接近...' : '等待共振窗口...'}
+            </Text>
+          )}
+          {resonancePhase === 'pulsing' && pulseState === 'hit-ready' && (
+            <Text className="block text-sm font-semibold text-center"
+              style={{ color: isNoise ? '#ff3344' : '#00ff88' }}>
+              {isNoise ? '⚠ 避开杂音脉冲!' : '现在点击!'}
+            </Text>
+          )}
+          {resonancePhase === 'pulsing' && pulseState === 'missed' && (
+            <Text className="block text-xs text-[#444466] text-center">已错过，等待下一轮...</Text>
+          )}
+          {resonancePhase === 'complete' && (
+            <Text className="block text-sm font-semibold text-[#00ff88] text-center">✓ 全部剥离完成</Text>
+          )}
+          {hitResult && (
+            <Text className="block text-sm font-bold text-center fade-in-up"
+              style={{
+                color: hitResult === 'perfect' ? '#ffcc00' : hitResult === 'good' ? '#00ff88' : '#ff3344',
+              }}
+            >
+              {hitResult === 'perfect' ? '完美共振!' : hitResult === 'good' ? '共振成功' : '杂音污染!'}
+            </Text>
+          )}
+        </View>
+
+        {/* 大按钮 */}
+        <View
+          className="flex items-center justify-center rounded-full transition-all duration-200"
+          style={{
+            width: pulseState === 'hit-ready' ? 160 : 120,
+            height: pulseState === 'hit-ready' ? 160 : 120,
+            backgroundColor: pulseState === 'hit-ready'
+              ? (isNoise ? 'rgba(255,51,68,0.25)' : 'rgba(0,255,136,0.2)')
+              : 'rgba(255,255,255,0.04)',
+            border: pulseState === 'hit-ready'
+              ? (isNoise ? '3px solid #ff3344' : '3px solid #00ff88')
+              : '2px solid rgba(255,255,255,0.12)',
+            boxShadow: pulseState === 'hit-ready'
+              ? (isNoise
+                ? '0 0 50px rgba(255,51,68,0.5), inset 0 0 40px rgba(255,51,68,0.15)'
+                : '0 0 50px rgba(0,255,136,0.4), inset 0 0 40px rgba(0,255,136,0.1)')
+              : 'none',
+          }}
+          onClick={handleTap}
+        >
+          {pulseState === 'hit-ready' ? (
+            <Text className="block text-xl font-bold"
+              style={{
+                color: isNoise ? '#ff3344' : '#00ff88',
+                textShadow: isNoise ? '0 0 15px #ff3344' : '0 0 15px #00ff88',
+              }}
+            >
+              {isNoise ? '避开!' : '共振!'}
+            </Text>
+          ) : resonancePhase === 'complete' ? (
+            <Text className="block text-sm text-[#00ff88]">✓</Text>
+          ) : (
+            <Text className="block text-xs text-[#444466]">
+              {pulseState === 'missed' ? '...' : isNoise ? '⚠' : '◉'}
+            </Text>
+          )}
+        </View>
+
+        {/* 脉冲进度条 */}
+        <View className="w-full mt-3">
+          <View className="flex flex-row items-center justify-between mb-1">
+            <Text className="block text-xs text-[#444466]">脉冲</Text>
+            <Text className="block text-xs font-mono text-[#00f0ff]">
+              {((PULSE_INTERVAL - (pulseProgress / 100) * PULSE_INTERVAL) / 1000).toFixed(1)}s
+            </Text>
           </View>
-
-          {/* 连接线 */}
-          <View className="w-8" />
-
-          {/* Step 2 */}
-          <View className="flex flex-col items-center flex-1">
-            <View className="flex flex-row items-center gap-2 mb-1">
-              <View
-                className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{
-                  backgroundColor: currentStep === 2 ? '#ff0066' : '#2a2a40',
-                  color: '#fff',
-                }}
-              >
-                <Text className="block text-xs font-bold">2</Text>
-              </View>
-              <Text
-                className="block text-sm font-semibold"
-                style={{ color: currentStep === 2 ? '#ff0066' : '#444466' }}
-              >
-                杂质剔除
-              </Text>
-            </View>
-            {currentStep === 2 && (
-              <View className="h-1 w-full rounded-full" style={{ backgroundColor: '#ff0066' }} />
-            )}
+          <View className="relative h-4 bg-[#0a0a0f] rounded-full overflow-hidden">
+            <View className="absolute top-0 bottom-0 rounded-full"
+              style={{ left: `${hitZoneStart}%`, width: `${hitZoneEnd - hitZoneStart}%`, backgroundColor: isNoise ? 'rgba(255,51,68,0.2)' : 'rgba(0,255,136,0.15)' }}
+            />
+            <View className="absolute top-1 bottom-1 rounded-full"
+              style={{ left: `${perfectStart}%`, width: `${perfectEnd - perfectStart}%`, backgroundColor: isNoise ? 'rgba(255,51,68,0.3)' : 'rgba(0,255,136,0.25)' }}
+            />
+            <View className="absolute top-0 bottom-0 w-1.5 rounded-full"
+              style={{ left: `${pulseProgress}%`, backgroundColor: pulseState === 'hit-ready' ? (isNoise ? '#ff3344' : '#00ff88') : '#00f0ff' }}
+            />
           </View>
         </View>
       </View>
 
-      {/* 操作区域 */}
-      <View className="px-4 mb-4">
-        {currentStep === 1 ? (
-          /* 步骤1：频谱均衡器 */
-          <Card className="bg-[#141420] border-[#2a2a40]">
-            <CardContent className="p-4">
-              <Text className="block text-xs text-[#8888aa] mb-1">
-                调节各频段至目标值，使频谱与记忆共振
+      {/* 隐藏真相揭示 */}
+      {revealedTruth && (
+        <View className="px-4 mb-2 fade-in-up" style={{ position: 'relative', zIndex: 10 }}>
+          <Card className="bg-[#1a1a2e] border-[#ff0066]/30">
+            <CardContent className="p-3">
+              <Text className="block text-xs text-[#ff0066] font-semibold mb-1">深层记忆解码完成</Text>
+              <Text className="block text-xs text-[#ff88aa]">
+                {EMOTION_LABELS[currentCustomer.memory.emotion]} → {EMOTION_LABELS[currentCustomer.memory.hiddenEmotion]}
               </Text>
-
-              {/* 全局匹配度 */}
-              <View className="mb-4">
-                <View className="flex flex-row items-center justify-between mb-1">
-                  <Text className="block text-xs text-[#8888aa]">共振匹配度</Text>
-                  <Text className="block text-xs font-mono" style={{
-                    color: avgMatch > 70 ? '#00ff88' : avgMatch > 40 ? '#ffaa00' : '#ff3344'
-                  }}>
-                    {Math.round(avgMatch)}%
-                  </Text>
-                </View>
-                <View className="h-2 bg-[#0a0a0f] rounded-full overflow-hidden">
-                  <View
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${avgMatch}%`,
-                      backgroundColor: avgMatch > 70 ? '#00ff88' : avgMatch > 40 ? '#ffaa00' : '#ff3344',
-                    }}
-                  />
-                </View>
-              </View>
-
-              {/* 六段频谱均衡器 */}
-              <View className="flex flex-col gap-1">
-                {spectrumBands.map((band) => {
-                  const bandMatch = Math.abs(band.current - band.target) < 10
-                  const isHidden = band.emotion === currentCustomer.memory.hiddenEmotion && hiddenMatched
-
-                  return (
-                    <View key={band.emotion} className="flex flex-row items-center gap-2 py-1">
-                      <Text className="block w-8 text-center text-sm font-semibold" style={{ color: band.color }}>
-                        {band.label}
-                      </Text>
-                      <View className="flex-1 h-6 bg-[#0a0a0f] rounded-full overflow-hidden relative">
-                        <View
-                          className="h-full rounded-full transition-all duration-200"
-                          style={{
-                            width: `${band.current}%`,
-                            backgroundColor: bandMatch ? '#00ff88' : band.color,
-                            opacity: bandMatch ? 1 : 0.7,
-                            boxShadow: isHidden ? `0 0 8px ${band.color}` : undefined,
-                          }}
-                        />
-                      </View>
-                      <Text className="block w-10 text-right font-mono text-xs" style={{ color: bandMatch ? '#00ff88' : '#8888aa' }}>
-                        {band.current}
-                      </Text>
-                      <View
-                        className="w-11 h-11 flex items-center justify-center rounded-full"
-                        style={{ backgroundColor: '#1a1a2e', border: '1px solid #2a2a40' }}
-                        hoverClass="border-[#444466] bg-[#222240]"
-                        onClick={() => adjustBand(band.emotion, -10)}
-                      >
-                        <Text className="block text-lg font-bold text-[#8888aa]" style={{ lineHeight: 1 }}>−</Text>
-                      </View>
-                      <View
-                        className="w-11 h-11 flex items-center justify-center rounded-full"
-                        style={{ backgroundColor: '#1a1a2e', border: `1px solid ${band.color}44` }}
-                        hoverClass="border-[#666688] bg-[#222240]"
-                        onClick={() => adjustBand(band.emotion, 10)}
-                      >
-                        <Text className="block text-lg font-bold" style={{ color: band.color, lineHeight: 1 }}>+</Text>
-                      </View>
-                    </View>
-                  )
-                })}
-              </View>
-
-              {/* 隐藏情感匹配提示 */}
-              {hiddenMatched && !revealedTruth && (
-                <View className="mt-3 p-2 rounded-lg border border-[#ff0066]/30 bg-[#ff0066]/5">
-                  <View className="flex flex-row items-center gap-2">
-                    <View className="w-2 h-2 rounded-full bg-[#ff0066] breathe" />
-                    <Text className="block text-xs text-[#ff0066]">检测到异常频谱共振...</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* 匹配完成 → 进入步骤2 */}
-              {isWellMatched && (
-                <View className="mt-4 p-4 rounded-lg border fade-in-up" style={{ borderColor: 'rgba(0,255,136,0.4)', backgroundColor: 'rgba(0,255,136,0.08)' }}>
-                  <View className="flex flex-row items-center gap-2 mb-2">
-                    <View className="w-3 h-3 rounded-full" style={{ backgroundColor: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
-                    <Text className="block text-sm font-semibold text-[#00ff88]">频谱共振完成！</Text>
-                  </View>
-                  <Text className="block text-xs text-[#8888aa] mb-3">
-                    纯度提升至 {Math.round(appraisalPurity)}%。接下来请清除杂质污染以确保记忆完整。
-                  </Text>
-                  <View
-                    className="flex items-center justify-center w-full py-3 rounded-lg"
-                    style={{ backgroundColor: '#ff0066', color: '#fff' }}
-                    hoverClass="opacity-90"
-                    onClick={advanceToStep2}
-                  >
-                    <Text style={{ color: '#fff', fontSize: '15px', fontWeight: 600 }}>清除杂质 →</Text>
-                  </View>
-                </View>
-              )}
             </CardContent>
           </Card>
-        ) : (
-          /* 步骤2：杂质剔除 */
-          <Card className="bg-[#141420] border-[#2a2a40]">
-            <CardContent className="p-4">
-              {/* 步骤1完成标记 */}
-              {step1Done && (
-                <View className="flex flex-row items-center gap-2 mb-3 pb-3 border-b border-[#2a2a40]">
-                  <View className="w-3 h-3 rounded-full" style={{ backgroundColor: '#00ff88', boxShadow: '0 0 6px #00ff88' }} />
-                  <Text className="block text-xs text-[#00ff88]">✓ 频谱共振已完成</Text>
-                  <Text className="block text-xs text-[#8888aa] ml-auto">纯度 {Math.round(appraisalPurity)}%</Text>
-                </View>
-              )}
+        </View>
+      )}
 
-              <Text className="block text-xs text-[#8888aa] mb-2">
-                点击记忆球上的黑色斑点清除精神污染。注意不要触碰发光区域！
-              </Text>
-
-              <View className="flex flex-row items-center justify-between mb-2">
-                <Text className="block text-sm text-[#8888aa]">
-                  剩余杂质: {remainingImpurities}/{impurities.length}
-                </Text>
-                {allImpuritiesRemoved && (
-                  <Badge className="bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/30 text-sm py-1 px-3">
-                    全部清除 ✓
-                  </Badge>
-                )}
-              </View>
-
-              {allImpuritiesRemoved && (
-                <View className="mt-3 p-3 rounded-lg border fade-in-up" style={{ borderColor: 'rgba(0,255,136,0.3)', backgroundColor: 'rgba(0,255,136,0.05)' }}>
-                  <View className="flex flex-row items-center gap-2">
-                    <View className="w-2 h-2 rounded-full bg-[#00ff88] breathe" />
-                    <Text className="block text-sm text-[#00ff88] font-semibold">记忆已净化完毕，可以完成鉴定</Text>
-                  </View>
-                </View>
-              )}
-
-              {!allImpuritiesRemoved && (
-                <View className="bg-[#0a0a0f] rounded-lg p-3 mt-2">
-                  <Text className="block text-xs text-[#444466] text-center">
-                    请点击上方记忆球中的黑色斑点
-                  </Text>
-                </View>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </View>
-
-      {/* 内容区底部留白 */}
       <View className="content-bottom-spacing" />
 
       {/* 底部操作区 */}
-      <View className="game-bottom-bar">
-        <View
-          className="game-primary-btn"
-          style={{ backgroundColor: '#7b2ff7' }}
-          onClick={handleComplete}
-        >
+      <View className="game-bottom-bar" style={{ zIndex: 100 }}>
+        <View className="game-primary-btn" style={{ backgroundColor: '#7b2ff7' }} onClick={handleComplete}>
           <Text style={{ color: '#fff', fontSize: '16px', fontWeight: 600 }}>完成鉴定</Text>
         </View>
         <View className="bottom-bar-row">
-          <View
-            className="game-secondary-btn"
+          <View className="game-secondary-btn"
             style={{ justifyContent: 'center', flex: 1, borderColor: '#ff334444' }}
             onClick={abortCustomer}
           >

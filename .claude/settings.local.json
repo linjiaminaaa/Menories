@@ -4,7 +4,8 @@
       "Bash(pnpm --version)",
       "Bash(npm --version)",
       "Bash(corepack --version)",
-      "Bash(corepack enable *)"
+      "Bash(corepack enable *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

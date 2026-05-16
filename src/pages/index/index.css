@@ -447,6 +447,202 @@
 }
 
 /* ============================================
+   共鸣舱 — CRT/涟漪动画
+   ============================================ */
+
+/* 共鸣舱外壳 */
+.resonance-chamber {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #0a0a12 40%, #141420 70%, #1a1a2e 100%);
+  border: 2px solid #2a2a40;
+  box-shadow: inset 0 0 60px rgba(0, 240, 255, 0.05), 0 0 30px rgba(0, 240, 255, 0.1);
+}
+
+/* 共鸣环（外圈点击区域） */
+.resonance-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px dashed #2a2a40;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.resonance-ring.hit-zone {
+  border-color: #00ff88;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4), inset 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.resonance-ring.noise-zone {
+  border-color: #ff3344;
+  box-shadow: 0 0 20px rgba(255, 51, 68, 0.5), inset 0 0 20px rgba(255, 51, 68, 0.1);
+}
+
+/* 涟漪脉冲动画 */
+@keyframes ripple-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes noise-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 0.8;
+    border-color: #ff3344;
+  }
+  50% {
+    opacity: 0.5;
+    border-color: #ff0066;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 0;
+    border-color: #ff3344;
+  }
+}
+
+.ripple-wave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  transform: translate(-50%, -50%) scale(0.1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ripple-wave.active {
+  animation: ripple-pulse 2s ease-out forwards;
+}
+
+.ripple-wave.noise {
+  border-color: #ff3344;
+  animation: noise-pulse 2s ease-out forwards;
+}
+
+/* 记忆球核心脉动 */
+@keyframes core-beat {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 30px var(--core-color, #4488ff), 0 0 60px var(--core-color, #4488ff);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 50px var(--core-color, #4488ff), 0 0 90px var(--core-color, #4488ff);
+  }
+}
+
+.resonance-core {
+  animation: core-beat 2s ease-in-out infinite;
+}
+
+/* CRT 扫描线增强 */
+@keyframes crt-flicker {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.06; }
+}
+
+.crt-overlay {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 255, 0.02) 2px,
+    rgba(0, 255, 255, 0.02) 4px
+  );
+  pointer-events: none;
+  z-index: 5;
+  animation: crt-flicker 0.1s infinite;
+}
+
+/* 信号强度表 */
+@keyframes signal-needle {
+  0% { transform: rotate(-45deg); }
+  100% { transform: rotate(45deg); }
+}
+
+.signal-meter {
+  position: relative;
+  height: 4px;
+  background: #0a0a0f;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.signal-meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* 外壳计数指示器 */
+.shell-indicator {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  justify-content: center;
+}
+
+.shell-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.shell-dot.remaining {
+  background-color: #2a2a40;
+  border: 1px solid #444466;
+}
+
+.shell-dot.stripped {
+  background-color: #00ff88;
+  box-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+}
+
+/* 连击指示器 */
+@keyframes combo-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.combo-pop {
+  animation: combo-pop 0.3s ease-out;
+}
+
+/* 完美命中闪光 */
+@keyframes perfect-flash {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.perfect-flash {
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  background: transparent;
+  border: 3px solid #00ff88;
+  animation: perfect-flash 0.6s ease-out forwards;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ============================================
    自定义滚动条（H5）
    ============================================ */
 ::-webkit-scrollbar {
