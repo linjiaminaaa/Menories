@@ -182,38 +182,36 @@ export function TradingScreen() {
       </View>
 
       {/* 交易操作 */}
-      <View className="px-4 mb-4">
-        <Text className="block text-xs text-[#8888aa] mb-2">选择你的行动</Text>
-        <View className="flex flex-col gap-2">
+      <View className="px-4 safe-bottom-lg">
+        <Text className="block text-sm text-[#8888aa] mb-3 font-semibold">选择你的行动</Text>
+        <View className="flex flex-col gap-3">
           {actions.map((action) => (
-            <Card
+            <View
               key={action.key}
-              className="bg-[#1a1a2e] border-[#2a2a40] memory-card"
+              className="trade-action-card"
               onClick={() => action.key !== 'buy' || canAfford ? executeTrade(action.key) : undefined}
             >
-              <CardContent className="p-3">
-                <View className="flex flex-row items-center justify-between mb-1">
-                  <View className="flex flex-row items-center gap-2">
-                    <View className="w-2 h-2 rounded-full" style={{ backgroundColor: action.color }} />
-                    <Text className="block text-sm font-semibold text-[#e0e0e0]">{action.label}</Text>
-                  </View>
-                  <Badge
-                    variant="outline"
-                    style={{
-                      borderColor: action.key === 'blackmail' ? '#ff334466' : action.key === 'tamper' ? '#ffaa0066' : '#2a2a40',
-                      color: action.key === 'blackmail' ? '#ff3344' : action.key === 'tamper' ? '#ffaa00' : '#8888aa',
-                    }}
-                    className="text-xs"
-                  >
-                    {action.risk}
-                  </Badge>
+              <View className="flex flex-row items-center justify-between mb-2">
+                <View className="flex flex-row items-center gap-2">
+                  <View className="w-3 h-3 rounded-full" style={{ backgroundColor: action.color }} />
+                  <Text className="block text-base font-semibold text-[#e0e0e0]">{action.label}</Text>
                 </View>
-                <Text className="block text-xs text-[#8888aa]">{action.description}</Text>
-                {action.key === 'buy' && !canAfford && (
-                  <Text className="block text-xs text-[#ff3344] mt-1">资金不足！</Text>
-                )}
-              </CardContent>
-            </Card>
+                <Badge
+                  variant="outline"
+                  style={{
+                    borderColor: action.key === 'blackmail' ? '#ff334466' : action.key === 'tamper' ? '#ffaa0066' : '#2a2a40',
+                    color: action.key === 'blackmail' ? '#ff3344' : action.key === 'tamper' ? '#ffaa00' : '#8888aa',
+                  }}
+                  className="text-xs"
+                >
+                  {action.risk}
+                </Badge>
+              </View>
+              <Text className="block text-sm text-[#8888aa]">{action.description}</Text>
+              {action.key === 'buy' && !canAfford && (
+                <Text className="block text-sm text-[#ff3344] mt-2 font-semibold">资金不足！</Text>
+              )}
+            </View>
           ))}
         </View>
       </View>

@@ -248,7 +248,7 @@
 
 /* 对话选项悬停效果 */
 .dialog-choice {
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   border: 1px solid #2a2a40;
 }
 
@@ -277,7 +277,178 @@
   transform: scale(0.97);
 }
 
-/* 自定义滚动条（H5） */
+/* ============================================
+   移动端优化样式
+   ============================================ */
+
+/* 底部操作栏 - 提高位置方便单手操作 */
+.game-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px;
+  /* 提高底部内边距，让按钮远离屏幕底部边缘 */
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  background-color: #0a0a0f;
+  border-top: 1px solid #1a1a2e;
+  z-index: 100;
+}
+
+/* 底部操作栏内的按钮行 */
+.game-bottom-bar .bottom-bar-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+/* 底部操作栏内的按钮行 - 按钮 */
+.game-bottom-bar .bottom-bar-row > * {
+  flex: 1;
+  min-height: 44px;
+}
+
+/* 主操作按钮 - 全宽醒目按钮 */
+.game-primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.game-primary-btn:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* 次要操作按钮 */
+.game-secondary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #2a2a40;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.game-secondary-btn:active {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: #444466;
+}
+
+/* 底部安全区填充 */
+.safe-bottom {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.safe-bottom-lg {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 内容区底部留白 - 为固定底栏留出空间 */
+.content-bottom-spacing {
+  padding-bottom: 160px;
+}
+
+/* 防止文字被选中（移动端） */
+.no-select {
+  /* 小程序环境不支持 user-select，使用空规则保留类名兼容性 */
+}
+
+/* 移动端友好的卡片触摸反馈 */
+.touch-card {
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.touch-card:active {
+  transform: scale(0.97);
+}
+
+/* 移动端友好的选择项卡片 */
+.touch-choice {
+  min-height: 48px;
+  padding: 14px 14px;
+  border-radius: 10px;
+  border: 1px solid #2a2a40;
+  background-color: #141420;
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.touch-choice:active {
+  border-color: #00f0ff;
+  background-color: rgba(0, 240, 255, 0.08);
+  transform: scale(0.98);
+}
+
+/* 滑块已内置 py-4 触摸区域，无需额外包装 */
+
+/* 记忆球 - 移动端优化 */
+.orb-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+/* Tab 切换按钮 - 移动端 */
+.tab-btn {
+  flex: 1;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab-btn:active {
+  transform: scale(0.96);
+}
+
+/* 交易行动卡片 - 移动端 */
+.trade-action-card {
+  min-height: 64px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #2a2a40;
+  background-color: #1a1a2e;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.trade-action-card:active {
+  transform: scale(0.97);
+  border-color: #444466;
+}
+
+/* 页面容器 - 安全区适配 */
+.page-safe {
+  min-height: 100vh;
+  /* 兼容 iOS 安全区域 */
+  min-height: -webkit-fill-available;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============================================
+   自定义滚动条（H5）
+   ============================================ */
 ::-webkit-scrollbar {
   width: 4px;
 }

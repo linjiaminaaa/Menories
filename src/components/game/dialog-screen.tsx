@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { View, Text } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useGameStore, EMOTION_COLORS } from '@/store/game-store'
 
@@ -155,16 +154,16 @@ export function DialogScreen() {
 
         {/* 选择项 */}
         {showChoices && currentStep?.choices && currentStep.choices.length > 0 && (
-          <View className="flex flex-col gap-2 mb-3">
+          <View className="flex flex-col gap-3 mb-3">
             {currentStep.choices.map((choice, i) => (
               <View
                 key={i}
-                className="dialog-choice bg-[#141420] rounded-lg p-3 fade-in-up"
+                className="touch-choice fade-in-up"
                 style={{ animationDelay: `${i * 0.1}s` }}
                 onClick={() => advanceDialog(i)}
               >
                 <Text className="block text-sm text-[#e0e0e0]">{choice.text}</Text>
-                <View className="flex flex-row gap-2 mt-1">
+                <View className="flex flex-row gap-2 mt-2">
                   {choice.defenseChange !== 0 && (
                     <Text className="block text-xs text-[#00f0ff]">
                       防线{choice.defenseChange > 0 ? '+' : ''}{choice.defenseChange}
@@ -183,9 +182,13 @@ export function DialogScreen() {
 
         {/* 继续/进入鉴定按钮 */}
         {showChoices && (!currentStep?.choices || currentStep.choices.length === 0) && (
-          <View className="flex flex-col gap-2 mb-3">
-            <Button
-              className="w-full bg-[#00f0ff]/20 border border-[#00f0ff]/40 text-[#00f0ff]"
+          <View className="flex flex-col gap-2 mb-3 safe-bottom">
+            <View
+              className="game-primary-btn"
+              style={{
+                backgroundColor: 'rgba(0, 240, 255, 0.15)',
+                border: '1px solid rgba(0, 240, 255, 0.4)',
+              }}
               onClick={() => {
                 if (isLastStep) {
                   setPhase('appraisal')
@@ -194,36 +197,25 @@ export function DialogScreen() {
                 }
               }}
             >
-              <Text className="text-[#00f0ff]">
+              <Text style={{ color: '#00f0ff', fontSize: '16px', fontWeight: 600 }}>
                 {isLastStep ? '开始鉴定记忆' : '继续'}
               </Text>
-            </Button>
+            </View>
           </View>
         )}
       </View>
 
-      {/* 底部快捷操作 */}
-      <View
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '12px 16px',
-          paddingBottom: '24px',
-          backgroundColor: '#0a0a0f',
-          borderTop: '1px solid #1a1a2e',
-          zIndex: 100,
-        }}
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full text-[#444466]"
-          onClick={() => setPhase('hub')}
-        >
-          <Text className="text-[#444466] text-xs">返回典当行</Text>
-        </Button>
+      {/* 底部返回按钮 */}
+      <View className="game-bottom-bar">
+        <View className="bottom-bar-row">
+          <View
+            className="game-secondary-btn"
+            style={{ justifyContent: 'center', flex: 1 }}
+            onClick={() => setPhase('hub')}
+          >
+            <Text style={{ color: '#444466', fontSize: '14px' }}>返回典当行</Text>
+          </View>
+        </View>
       </View>
     </View>
   )

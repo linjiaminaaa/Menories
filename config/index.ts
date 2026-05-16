@@ -185,6 +185,7 @@ export default defineConfig<'vite'>(async (merge, _env) => {
         port: 5000,
         host: '0.0.0.0',
         open: false,
+        allowedHosts: ['24kz4212ip04.vicp.fun'],
         proxy: {
           '/api': {
             target: 'http://localhost:3000',

@@ -33,6 +33,14 @@ export interface Impurity {
   removed: boolean
 }
 
+export interface SpectrumBand {
+  emotion: EmotionType
+  label: string
+  color: string
+  current: number
+  target: number
+}
+
 export interface Memory {
   id: string
   name: string
@@ -107,8 +115,7 @@ interface GameState {
   revealedTruth: boolean
 
   // 鉴定状态
-  frequencyTarget: number
-  frequencyCurrent: number
+  spectrumBands: SpectrumBand[]
   impurities: Impurity[]
   appraisalPurity: number
   appraisalCompleteness: number
@@ -137,14 +144,14 @@ interface GameState {
   addLog: (text: string, type: LogType) => void
   startNextCustomer: () => void
   advanceDialog: (choiceIndex?: number) => void
-  setFrequencyCurrent: (value: number) => void
+  adjustBand: (emotion: EmotionType, delta: number) => void
   removeImpurity: (id: string) => void
   missImpurity: () => void
   completeAppraisal: () => void
   setNegotiatedPrice: (price: number) => void
   executeTrade: (action: TradeAction) => void
   addToInventory: (memory: Memory) => void
-  removeFromInventory: (id: string) => void
+  removeFromInventory: (id: string, sellPrice?: number) => void
   applyFixative: (id: string) => void
   endDay: () => void
   startNewDay: () => void
@@ -165,8 +172,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   dialogIndex: 0,
   revealedTruth: false,
 
-  frequencyTarget: 50,
-  frequencyCurrent: 0,
+  spectrumBands: [],
   impurities: [],
   appraisalPurity: 0,
   appraisalCompleteness: 100,
@@ -198,6 +204,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   startNextCustomer: () => {
     const state = get()
+    // 如果有中断的顾客交互（返回典当行再回来），恢复继续
+    if (state.currentCustomer && !state.completedCustomerIds.includes(state.currentCustomer.id)) {
+      set({ phase: 'dialog' })
+      get().addLog(`继续与 ${state.currentCustomer.name} 的对话...`, 'info')
+      return
+    }
     const { customerQueue, queueIndex } = state
     if (queueIndex >= customerQueue.length) {
       set({ phase: 'hub' })
@@ -207,6 +219,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     const customerId = customerQueue[queueIndex]
     const customer = getCustomerById(customerId)
     if (!customer) return
+
+    // Generate spectrum bands for equalizer
+    const emotionOrder: EmotionType[] = ['sadness', 'anger', 'joy', 'fear', 'nostalgia', 'guilt']
+    const labels = ['悲', '怒', '喜', '惧', '怀', '罪']
+    const spectrumBands: SpectrumBand[] = emotionOrder.map((emo, i) => {
+      let target: number
+      if (emo === customer.memory.emotion) {
+        target = 60 + Math.floor(Math.random() * 20) // surface: 60-80
+      } else if (emo === customer.memory.hiddenEmotion) {
+        target = 65 + Math.floor(Math.random() * 20) // hidden: 65-85
+      } else {
+        target = Math.floor(Math.random() * 35) // other: 0-35
+      }
+      return {
+        emotion: emo,
+        label: labels[i],
+        color: EMOTION_COLORS[emo],
+        current: 0,
+        target,
+      }
+    })
 
     // Generate impurities for appraisal
     const impurityCount = 3 + Math.floor(customer.memory.corruptionLevel / 25)
@@ -226,8 +259,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentCustomer: customer,
       dialogIndex: 0,
       revealedTruth: false,
-      frequencyTarget: 30 + Math.random() * 40,
-      frequencyCurrent: 0,
+      spectrumBands,
       impurities,
       appraisalPurity: customer.memory.purity,
       appraisalCompleteness: 100,
@@ -273,19 +305,40 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  setFrequencyCurrent: (value) => {
+  adjustBand: (emotion, delta) => {
     const state = get()
-    set({ frequencyCurrent: value })
-    // Calculate purity based on frequency match
-    const diff = Math.abs(value - state.frequencyTarget)
-    const matchScore = Math.max(0, 100 - diff * 2)
-    const basePurity = state.currentCustomer?.memory.purity ?? 50
-    const newPurity = Math.round(basePurity * (0.5 + matchScore / 200))
-    set({ appraisalPurity: newPurity })
+    const bands = state.spectrumBands.map((b) => {
+      if (b.emotion !== emotion) return b
+      const next = Math.max(0, Math.min(100, b.current + delta))
+      return { ...b, current: next }
+    })
+    set({ spectrumBands: bands })
 
-    if (diff < 5 && !state.revealedTruth) {
-      set({ revealedTruth: true })
-      get().addLog('频谱完美匹配！检测到隐藏的情感波动...', 'success')
+    // Recalculate purity from band matches
+    if (!state.currentCustomer) return
+    let totalMatch = 0
+    let totalWeight = 0
+    bands.forEach((b) => {
+      const match = Math.max(0, 100 - Math.abs(b.current - b.target) * 2)
+      let weight = 1
+      if (b.emotion === state.currentCustomer!.memory.emotion) weight = 2.5
+      else if (b.emotion === state.currentCustomer!.memory.hiddenEmotion) weight = 2
+      totalMatch += match * weight
+      totalWeight += weight
+    })
+    const avgMatch = totalWeight > 0 ? totalMatch / totalWeight : 0
+    const basePurity = state.currentCustomer.memory.purity ?? 50
+    const newPurity = Math.round(basePurity * (0.3 + avgMatch / 140))
+    set({ appraisalPurity: Math.min(100, newPurity) })
+
+    // Check if hidden emotion band is matched
+    const hiddenBand = bands.find((b) => b.emotion === state.currentCustomer!.memory.hiddenEmotion)
+    if (hiddenBand && !state.revealedTruth) {
+      const hiddenDiff = Math.abs(hiddenBand.current - hiddenBand.target)
+      if (hiddenDiff < 10) {
+        set({ revealedTruth: true })
+        get().addLog('频谱共振成功！检测到隐藏的情感波动...', 'success')
+      }
     }
   },
 
@@ -300,7 +353,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     set({
       impurities: newImpurities,
-      appraisalPurity: Math.min(100, state.currentCustomer!.memory.purity + corruptionReduction * 0.5),
+      appraisalPurity: Math.min(100, state.appraisalPurity + corruptionReduction * 0.3),
     })
     get().addLog('清除了一处精神污染', 'success')
   },
@@ -318,8 +371,13 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   completeAppraisal: () => {
     const state = get()
+    // Calculate completeness from impurities removed
+    const totalImpurities = state.impurities.length
+    const removedCount = state.impurities.filter((i) => i.removed).length
+    const impurityCompleteness = totalImpurities > 0 ? (removedCount / totalImpurities) * 100 : 100
+    // Calculate purity from band matching (already set in apprasalPurity by adjustBand)
     const purity = state.appraisalPurity
-    const completeness = state.appraisalCompleteness
+    const completeness = Math.round((state.appraisalCompleteness + impurityCompleteness) / 2)
     const rarity = state.currentCustomer?.memory.rarity ?? 1
     const marketRate = 0.8 + Math.random() * 0.4
     const basePrice = state.currentCustomer?.memory.basePrice ?? 100
@@ -328,6 +386,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       phase: 'trading',
       negotiatedPrice: price,
+      appraisalCompleteness: completeness,
     })
     get().addLog(`鉴定完成 — 纯度: ${Math.round(purity)}%, 完整度: ${Math.round(completeness)}%`, 'info')
     get().addLog(`估价: ${price} 元`, 'info')
@@ -404,11 +463,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => ({ inventory: [...state.inventory, invMemory] }))
   },
 
-  removeFromInventory: (id) => {
+  removeFromInventory: (id, sellPrice) => {
+    const mem = get().inventory.find((m) => m.id === id)
     set((state) => ({
       inventory: state.inventory.filter((m) => m.id !== id),
+      ...(sellPrice !== undefined ? { money: state.money + sellPrice } : {}),
     }))
-    get().addLog('出售了一段记忆', 'info')
+    if (sellPrice !== undefined && mem) {
+      get().addLog(`出售了「${mem.name}」，获得 ${sellPrice} 元`, 'success')
+    }
   },
 
   applyFixative: (id) => {
@@ -445,14 +508,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       events.push('你的声誉跌至谷底，街坊们开始对你指指点点。')
     }
 
-    set({
+    set((s) => ({
       phase: 'hub',
-      day: state.day + 1,
+      day: s.day + 1,
       inventory: agedInventory,
-      dayConsequences: events,
-      totalNegativeEnergy: Math.max(0, state.totalNegativeEnergy - 10),
+      dayConsequences: [...s.dayConsequences, ...events],
+      totalNegativeEnergy: Math.max(0, s.totalNegativeEnergy - 10),
       currentCustomer: null,
-    })
+    }))
 
     get().addLog(`—— 第 ${state.day} 天结束 ——`, 'info')
   },

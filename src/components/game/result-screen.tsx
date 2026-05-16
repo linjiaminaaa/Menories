@@ -1,5 +1,4 @@
 import { View, Text } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useGameStore, EMOTION_COLORS, EMOTION_LABELS } from '@/store/game-store'
 
@@ -101,26 +100,18 @@ export function ResultScreen() {
         </Card>
       </View>
 
+      {/* 内容区底部留白 */}
+      <View className="content-bottom-spacing" />
+
       {/* 返回按钮 */}
-      <View
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '12px 16px',
-          paddingBottom: '24px',
-          backgroundColor: '#0a0a0f',
-          borderTop: '1px solid #1a1a2e',
-          zIndex: 100,
-        }}
-      >
-        <Button
-          className="w-full bg-[#00f0ff] text-[#0a0a0f] font-semibold"
+      <View className="game-bottom-bar">
+        <View
+          className="game-primary-btn"
+          style={{ backgroundColor: '#00f0ff', color: '#0a0a0f' }}
           onClick={returnToHub}
         >
-          <Text className="text-[#0a0a0f] font-semibold">回到典当行</Text>
-        </Button>
+          <Text style={{ color: '#0a0a0f', fontSize: '16px', fontWeight: 600 }}>回到典当行</Text>
+        </View>
       </View>
     </View>
   )

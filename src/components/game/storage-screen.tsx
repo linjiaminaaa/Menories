@@ -1,5 +1,4 @@
 import { View, Text } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useGameStore, EMOTION_COLORS, EMOTION_LABELS } from '@/store/game-store'
@@ -45,9 +44,6 @@ export function StorageScreen({ onSellMemory, onApplyFixative, onClose }: Storag
             {inventory.length} 段记忆
           </Badge>
         </View>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <Text className="text-[#8888aa]">返回</Text>
-        </Button>
       </View>
 
       {/* 环境状态 */}
@@ -76,7 +72,7 @@ export function StorageScreen({ onSellMemory, onApplyFixative, onClose }: Storag
           </Text>
         </View>
       ) : (
-        <View className="flex flex-col gap-3">
+        <View className="flex flex-col gap-3 content-bottom-spacing">
           {inventory.map((mem, index) => {
             const conflict = getConflictWarning(mem, index)
             const emotionColor = EMOTION_COLORS[mem.emotion]
@@ -161,23 +157,21 @@ export function StorageScreen({ onSellMemory, onApplyFixative, onClose }: Storag
                   )}
 
                   {/* 操作按钮 */}
-                  <View className="flex flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 border-[#00f0ff] text-[#00f0ff]"
+                  <View className="flex flex-row gap-3 mt-1">
+                    <View
+                      className="game-secondary-btn"
+                      style={{ borderColor: '#00f0ff66', flex: 1 }}
                       onClick={() => onApplyFixative(mem.id)}
                     >
-                      <Text className="text-[#00f0ff] text-xs">定影剂 (50元)</Text>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 border-[#00ff88] text-[#00ff88]"
+                      <Text style={{ color: '#00f0ff', fontSize: '13px', fontWeight: 500 }}>定影剂 (50元)</Text>
+                    </View>
+                    <View
+                      className="game-secondary-btn"
+                      style={{ borderColor: '#00ff8866', flex: 1 }}
                       onClick={() => onSellMemory(mem.id)}
                     >
-                      <Text className="text-[#00ff88] text-xs">出售 ({sellPrice}元)</Text>
-                    </Button>
+                      <Text style={{ color: '#00ff88', fontSize: '13px', fontWeight: 500 }}>出售 ({sellPrice}元)</Text>
+                    </View>
                   </View>
 
                   {/* 存储天数 */}
@@ -190,6 +184,19 @@ export function StorageScreen({ onSellMemory, onApplyFixative, onClose }: Storag
           })}
         </View>
       )}
+
+      {/* 底部返回按钮 */}
+      <View className="game-bottom-bar">
+        <View className="bottom-bar-row">
+          <View
+            className="game-secondary-btn"
+            style={{ justifyContent: 'center', flex: 1, borderColor: '#2a2a40' }}
+            onClick={onClose}
+          >
+            <Text style={{ color: '#8888aa', fontSize: '15px', fontWeight: 500 }}>返回</Text>
+          </View>
+        </View>
+      </View>
     </View>
   )
 }

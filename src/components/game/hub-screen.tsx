@@ -1,5 +1,4 @@
 import { View, Text } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useGameStore } from '@/store/game-store'
@@ -17,7 +16,6 @@ export function HubScreen() {
   const startNextCustomer = useGameStore((s) => s.startNextCustomer)
   const showStorage = useGameStore((s) => s.showStorage)
   const endDay = useGameStore((s) => s.endDay)
-  const startNewDay = useGameStore((s) => s.startNewDay)
 
   const hasMoreCustomers = queueIndex < customerQueue.length
   const allDone = completedCustomerIds.length >= customerQueue.length
@@ -133,57 +131,46 @@ export function HubScreen() {
         )}
       </View>
 
+      {/* 内容区底部留白 */}
+      <View className="content-bottom-spacing" />
+
       {/* 底部操作区 */}
-      <View
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          padding: '12px 16px',
-          paddingBottom: '24px',
-          backgroundColor: '#0a0a0f',
-          borderTop: '1px solid #1a1a2e',
-          zIndex: 100,
-        }}
-      >
+      <View className="game-bottom-bar">
         {hasMoreCustomers ? (
-          <Button
-            className="w-full bg-[#00f0ff] hover:bg-[#00c8d4] text-[#0a0a0f] font-semibold"
+          <View
+            className="game-primary-btn"
+            style={{ backgroundColor: '#00f0ff', color: '#0a0a0f' }}
             onClick={startNextCustomer}
           >
-            <Text className="text-[#0a0a0f] font-semibold">下一位顾客</Text>
-          </Button>
-        ) : allDone ? (
-          <View className="bg-[#141420] rounded-lg p-3 border border-[#2a2a40] text-center">
-            <Text className="block text-sm text-[#8888aa]">所有顾客都已光临</Text>
-            <Text className="block text-xs text-[#444466] mt-1">故事已完结</Text>
+            <Text style={{ color: '#0a0a0f', fontSize: '16px', fontWeight: 600 }}>下一位顾客</Text>
           </View>
-        ) : null}
+        ) : allDone ? (
+          <View
+            className="game-primary-btn"
+            style={{ backgroundColor: '#ffaa00', color: '#0a0a0f' }}
+            onClick={endDay}
+          >
+            <Text style={{ color: '#0a0a0f', fontSize: '16px', fontWeight: 600 }}>结束今天</Text>
+          </View>
+        ) : (
+          <View className="bg-[#141420] rounded-lg p-4 border border-[#2a2a40] text-center">
+            <Text className="block text-sm text-[#8888aa]">等待顾客...</Text>
+          </View>
+        )}
 
-        <View className="flex flex-row gap-2">
-          <Button
-            variant="outline"
-            className="flex-1 border-[#2a2a40] text-[#8888aa]"
+        <View className="bottom-bar-row">
+          <View
+            className="game-secondary-btn"
             onClick={showStorage}
           >
-            <Text className="text-[#8888aa] text-xs">存储柜</Text>
-          </Button>
-          {hasMoreCustomers && (
-            <Button
-              variant="outline"
-              className="flex-1 border-[#2a2a40] text-[#8888aa]"
-              onClick={() => {
-                endDay()
-                startNewDay()
-              }}
-            >
-              <Text className="text-[#8888aa] text-xs">结束今天</Text>
-            </Button>
-          )}
+            <Text style={{ color: '#8888aa', fontSize: '14px' }}>存储柜</Text>
+          </View>
+          <View
+            className="game-secondary-btn"
+            onClick={endDay}
+          >
+            <Text style={{ color: '#8888aa', fontSize: '14px' }}>结束今天</Text>
+          </View>
         </View>
       </View>
     </View>

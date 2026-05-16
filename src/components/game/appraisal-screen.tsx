@@ -1,30 +1,23 @@
 import { useState, useCallback } from 'react'
 import { View, Text } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
 import { useGameStore, EMOTION_COLORS, EMOTION_LABELS } from '@/store/game-store'
 
 export function AppraisalScreen() {
   const currentCustomer = useGameStore((s) => s.currentCustomer)
-  const frequencyTarget = useGameStore((s) => s.frequencyTarget)
-  const frequencyCurrent = useGameStore((s) => s.frequencyCurrent)
+  const spectrumBands = useGameStore((s) => s.spectrumBands)
   const impurities = useGameStore((s) => s.impurities)
   const appraisalPurity = useGameStore((s) => s.appraisalPurity)
   const appraisalCompleteness = useGameStore((s) => s.appraisalCompleteness)
   const revealedTruth = useGameStore((s) => s.revealedTruth)
-  const setFrequencyCurrent = useGameStore((s) => s.setFrequencyCurrent)
+  const adjustBand = useGameStore((s) => s.adjustBand)
   const removeImpurity = useGameStore((s) => s.removeImpurity)
   const missImpurity = useGameStore((s) => s.missImpurity)
   const completeAppraisal = useGameStore((s) => s.completeAppraisal)
 
-  const [activeTab, setActiveTab] = useState<'frequency' | 'impurity'>('frequency')
+  const [activeTab, setActiveTab] = useState<'equalizer' | 'impurity'>('equalizer')
   const [removedImpurities, setRemovedImpurities] = useState<Set<string>>(new Set())
-
-  const handleFrequencyChange = useCallback((value: number[]) => {
-    setFrequencyCurrent(value[0])
-  }, [setFrequencyCurrent])
 
   const handleImpurityTap = useCallback((impId: string) => {
     if (removedImpurities.has(impId)) return
@@ -45,8 +38,17 @@ export function AppraisalScreen() {
   const emotionColor = EMOTION_COLORS[currentCustomer.memory.emotion]
   const hiddenColor = EMOTION_COLORS[currentCustomer.memory.hiddenEmotion]
   const allImpuritiesRemoved = impurities.every((i) => i.removed)
-  const freqDiff = Math.abs(frequencyCurrent - frequencyTarget)
-  const isFreqMatched = freqDiff < 5
+
+  // Calculate overall match percentage from bands
+  const totalMatch = spectrumBands.reduce((sum, b) => {
+    const match = Math.max(0, 100 - Math.abs(b.current - b.target) * 2)
+    return sum + match
+  }, 0)
+  const avgMatch = spectrumBands.length > 0 ? totalMatch / spectrumBands.length : 0
+
+  // Check if hidden emotion band is well-matched (for visual indication)
+  const hiddenBand = spectrumBands.find((b) => b.emotion === currentCustomer.memory.hiddenEmotion)
+  const hiddenMatched = hiddenBand ? Math.abs(hiddenBand.current - hiddenBand.target) < 10 : false
 
   return (
     <View className="min-h-screen bg-[#0a0a0f] scanline-overlay">
@@ -88,11 +90,10 @@ export function AppraisalScreen() {
           <CardContent className="p-4">
             <View className="flex items-center justify-center mb-3">
               <View
-                className="relative w-36 h-36 rounded-full orb-glow"
+                className="relative w-48 h-48 rounded-full orb-glow"
                 style={{ '--orb-color': revealedTruth ? hiddenColor : emotionColor } as React.CSSProperties}
                 onClick={activeTab === 'impurity' ? handleOrbTap : undefined}
               >
-                {/* 记忆球主体 */}
                 <View
                   className="absolute inset-2 rounded-full orb-flow-bg"
                   style={{
@@ -100,7 +101,6 @@ export function AppraisalScreen() {
                     backgroundSize: '200% 200%',
                   }}
                 />
-                {/* 高光 */}
                 <View className="absolute top-3 left-6 w-8 h-4 rounded-full blur-sm" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
                 {/* 杂质斑点 */}
                 {activeTab === 'impurity' && impurities.map((imp) => (
@@ -111,8 +111,8 @@ export function AppraisalScreen() {
                       style={{
                         left: `${imp.x}%`,
                         top: `${imp.y}%`,
-                        width: `${imp.size}px`,
-                        height: `${imp.size}px`,
+                        width: `${Math.max(imp.size, 22)}px`,
+                        height: `${Math.max(imp.size, 22)}px`,
                         backgroundColor: '#1a0a0a',
                         border: '1px solid #330000',
                         transform: 'translate(-50%, -50%)',
@@ -174,18 +174,18 @@ export function AppraisalScreen() {
       <View className="px-4 mb-3">
         <View className="flex flex-row gap-2">
           <View
-            className={`flex-1 py-2 rounded-lg text-center ${activeTab === 'frequency' ? 'bg-[#00f0ff]/10 border border-[#00f0ff]/30' : 'bg-[#141420] border border-[#2a2a40]'}`}
-            onClick={() => setActiveTab('frequency')}
+            className={`tab-btn ${activeTab === 'equalizer' ? 'bg-[#00f0ff]/10 border border-[#00f0ff]/30' : 'bg-[#141420] border border-[#2a2a40]'}`}
+            onClick={() => setActiveTab('equalizer')}
           >
-            <Text className={`block text-xs ${activeTab === 'frequency' ? 'text-[#00f0ff]' : 'text-[#8888aa]'}`}>
-              频谱调频
+            <Text className={`block ${activeTab === 'equalizer' ? 'text-[#00f0ff]' : 'text-[#8888aa]'}`}>
+              频谱均衡
             </Text>
           </View>
           <View
-            className={`flex-1 py-2 rounded-lg text-center ${activeTab === 'impurity' ? 'bg-[#ff0066]/10 border border-[#ff0066]/30' : 'bg-[#141420] border border-[#2a2a40]'}`}
+            className={`tab-btn ${activeTab === 'impurity' ? 'bg-[#ff0066]/10 border border-[#ff0066]/30' : 'bg-[#141420] border border-[#2a2a40]'}`}
             onClick={() => setActiveTab('impurity')}
           >
-            <Text className={`block text-xs ${activeTab === 'impurity' ? 'text-[#ff0066]' : 'text-[#8888aa]'}`}>
+            <Text className={`block ${activeTab === 'impurity' ? 'text-[#ff0066]' : 'text-[#8888aa]'}`}>
               杂质剔除
             </Text>
           </View>
@@ -194,77 +194,112 @@ export function AppraisalScreen() {
 
       {/* 操作区域 */}
       <View className="px-4 mb-4">
-        {activeTab === 'frequency' ? (
+        {activeTab === 'equalizer' ? (
           <Card className="bg-[#141420] border-[#2a2a40]">
             <CardContent className="p-4">
-              <Text className="block text-xs text-[#8888aa] mb-3">
-                拖动滑块调整频率，当频率与记忆波动一致时，杂音消失、画面变清晰
+              <Text className="block text-xs text-[#8888aa] mb-1">
+                调节各频段至目标值，使频谱与记忆共振
               </Text>
 
-              {/* 目标频率指示 */}
-              <View className="flex flex-row items-center justify-between mb-2">
-                <Text className="block text-xs text-[#8888aa]">目标频率</Text>
-                <Text className="block text-xs font-mono text-[#00f0ff]">{Math.round(frequencyTarget)} Hz</Text>
-              </View>
-
-              {/* 频率可视化 */}
-              <View className="h-10 bg-[#0a0a0f] rounded-lg mb-3 relative overflow-hidden">
-                {/* 目标波形 */}
-                <View
-                  className="absolute top-0 bottom-0 w-1" style={{ backgroundColor: 'rgba(0,240,255,0.5)', left: `${frequencyTarget}%` }}
-                />
-                {/* 当前位置 */}
-                <View
-                  className="absolute top-0 bottom-0 w-1 rounded"
-                  style={{
-                    left: `${frequencyCurrent}%`,
-                    backgroundColor: isFreqMatched ? '#00ff88' : '#ff0066',
-                    boxShadow: isFreqMatched ? '0 0 8px #00ff88' : '0 0 8px #ff0066',
-                    transition: 'left 0.1s ease',
-                  }}
-                />
-                {/* 波形效果 */}
-                {Array.from({ length: 20 }).map((_, i) => (
+              {/* 全局匹配度 */}
+              <View className="mb-4">
+                <View className="flex flex-row items-center justify-between mb-1">
+                  <Text className="block text-xs text-[#8888aa]">共振匹配度</Text>
+                  <Text className="block text-xs font-mono" style={{
+                    color: avgMatch > 70 ? '#00ff88' : avgMatch > 40 ? '#ffaa00' : '#ff3344'
+                  }}>
+                    {Math.round(avgMatch)}%
+                  </Text>
+                </View>
+                <View className="h-2 bg-[#0a0a0f] rounded-full overflow-hidden">
                   <View
-                    key={i}
-                    className="absolute bottom-0 w-1 rounded-t"
+                    className="h-full rounded-full transition-all duration-300"
                     style={{
-                      left: `${i * 5 + 2}%`,
-                      height: `${15 + Math.sin((i * 0.5) + frequencyCurrent * 0.1) * 15}%`,
-                      backgroundColor: isFreqMatched ? '#00ff8833' : '#ff006622',
+                      width: `${avgMatch}%`,
+                      backgroundColor: avgMatch > 70 ? '#00ff88' : avgMatch > 40 ? '#ffaa00' : '#ff3344',
                     }}
                   />
-                ))}
+                </View>
               </View>
 
-              {/* 匹配状态 */}
-              <View className="flex flex-row items-center justify-center gap-2 mb-3">
-                <View
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    backgroundColor: isFreqMatched ? '#00ff88' : freqDiff < 15 ? '#ffaa00' : '#ff3344',
-                    boxShadow: `0 0 6px ${isFreqMatched ? '#00ff88' : freqDiff < 15 ? '#ffaa00' : '#ff3344'}`,
-                  }}
-                />
-                <Text
-                  className="block text-xs font-mono"
-                  style={{
-                    color: isFreqMatched ? '#00ff88' : freqDiff < 15 ? '#ffaa00' : '#ff3344',
-                  }}
-                >
-                  {isFreqMatched ? '完美匹配！' : freqDiff < 15 ? '接近匹配...' : '频率偏差过大'}
-                </Text>
+              {/* 六段频谱均衡器 */}
+              <View className="flex flex-col gap-1">
+                {spectrumBands.map((band) => {
+                  const bandMatch = Math.abs(band.current - band.target) < 10
+                  const isHidden = band.emotion === currentCustomer.memory.hiddenEmotion && hiddenMatched
+
+                  return (
+                    <View key={band.emotion} className="flex flex-row items-center gap-2 py-1">
+                      {/* 情感标签 */}
+                      <Text
+                        className="block w-8 text-center text-sm font-semibold"
+                        style={{ color: band.color }}
+                      >
+                        {band.label}
+                      </Text>
+
+                      {/* 频段进度条 */}
+                      <View className="flex-1 h-6 bg-[#0a0a0f] rounded-full overflow-hidden relative">
+                        <View
+                          className="h-full rounded-full transition-all duration-200"
+                          style={{
+                            width: `${band.current}%`,
+                            backgroundColor: bandMatch ? '#00ff88' : band.color,
+                            opacity: bandMatch ? 1 : 0.7,
+                            boxShadow: isHidden ? `0 0 8px ${band.color}` : undefined,
+                          }}
+                        />
+                      </View>
+
+                      {/* 当前数值 */}
+                      <Text
+                        className="block w-10 text-right font-mono text-xs"
+                        style={{ color: bandMatch ? '#00ff88' : '#8888aa' }}
+                      >
+                        {band.current}
+                      </Text>
+
+                      {/* 减号按钮 */}
+                      <View
+                        className="w-11 h-11 flex items-center justify-center rounded-full"
+                        style={{
+                          backgroundColor: '#1a1a2e',
+                          border: '1px solid #2a2a40',
+                        }}
+                        hoverClass="border-[#444466] bg-[#222240]"
+                        onClick={() => adjustBand(band.emotion, -10)}
+                      >
+                        <Text className="block text-lg font-bold text-[#8888aa]" style={{ lineHeight: 1 }}>−</Text>
+                      </View>
+
+                      {/* 加号按钮 */}
+                      <View
+                        className="w-11 h-11 flex items-center justify-center rounded-full"
+                        style={{
+                          backgroundColor: '#1a1a2e',
+                          border: `1px solid ${band.color}44`,
+                        }}
+                        hoverClass="border-[#666688] bg-[#222240]"
+                        onClick={() => adjustBand(band.emotion, 10)}
+                      >
+                        <Text className="block text-lg font-bold" style={{ color: band.color, lineHeight: 1 }}>+</Text>
+                      </View>
+                    </View>
+                  )
+                })}
               </View>
 
-              {/* 滑块 */}
-              <Slider
-                value={[frequencyCurrent]}
-                min={0}
-                max={100}
-                step={1}
-                onValueChange={handleFrequencyChange}
-                className="w-full"
-              />
+              {/* 隐藏情感匹配提示 */}
+              {hiddenMatched && !revealedTruth && (
+                <View className="mt-3 p-2 rounded-lg border border-[#ff0066]/30 bg-[#ff0066]/5">
+                  <View className="flex flex-row items-center gap-2">
+                    <View className="w-2 h-2 rounded-full bg-[#ff0066] breathe" />
+                    <Text className="block text-xs text-[#ff0066]">
+                      检测到异常频谱共振...
+                    </Text>
+                  </View>
+                </View>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -295,26 +330,18 @@ export function AppraisalScreen() {
         )}
       </View>
 
+      {/* 内容区底部留白 */}
+      <View className="content-bottom-spacing" />
+
       {/* 完成鉴定按钮 */}
-      <View
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '12px 16px',
-          paddingBottom: '24px',
-          backgroundColor: '#0a0a0f',
-          borderTop: '1px solid #1a1a2e',
-          zIndex: 100,
-        }}
-      >
-        <Button
-          className="w-full bg-[#7b2ff7] hover:bg-[#6a1ee6] text-white font-semibold"
+      <View className="game-bottom-bar">
+        <View
+          className="game-primary-btn"
+          style={{ backgroundColor: '#7b2ff7' }}
           onClick={handleComplete}
         >
-          <Text className="text-white font-semibold">完成鉴定</Text>
-        </Button>
+          <Text style={{ color: '#fff', fontSize: '16px', fontWeight: 600 }}>完成鉴定</Text>
+        </View>
       </View>
     </View>
   )

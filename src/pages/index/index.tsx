@@ -13,15 +13,13 @@ export default function Index() {
   const removeFromInventory = useGameStore((s) => s.removeFromInventory)
   const applyFixative = useGameStore((s) => s.applyFixative)
   const returnToHub = useGameStore((s) => s.returnToHub)
-  const addLog = useGameStore((s) => s.addLog)
   const inventory = useGameStore((s) => s.inventory)
 
   const handleSellMemory = (id: string) => {
     const mem = inventory.find((m) => m.id === id)
     if (mem) {
       const sellPrice = Math.round(mem.basePrice * (mem.purity / 100) * (mem.completeness / 100) * mem.rarity * 0.6)
-      removeFromInventory(id)
-      addLog(`出售了「${mem.name}」，获得 ${sellPrice} 元`, 'success')
+      removeFromInventory(id, sellPrice)
     }
   }
 
