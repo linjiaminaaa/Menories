@@ -2,7 +2,8 @@ import { View } from '@tarojs/components'
 import { useGameStore } from '@/store/game-store'
 import { HubScreen } from '@/components/game/hub-screen'
 import { DialogScreen } from '@/components/game/dialog-screen'
-import { AppraisalScreen } from '@/components/game/appraisal-screen'
+import { TuningScreen } from '@/components/game/tuning-screen'
+import { PurifyScreen } from '@/components/game/purify-screen'
 import { TradingScreen } from '@/components/game/trading-screen'
 import { ResultScreen } from '@/components/game/result-screen'
 import { StorageScreen } from '@/components/game/storage-screen'
@@ -32,7 +33,8 @@ export default function Index() {
     <View className="game-container">
       {phase === 'hub' && <HubScreen />}
       {phase === 'dialog' && <DialogScreen />}
-      {phase === 'appraisal' && <AppraisalScreen />}
+      {phase === 'tuning' && <TuningScreen />}
+      {phase === 'purify' && <PurifyScreen />}
       {phase === 'trading' && <TradingScreen />}
       {phase === 'result' && <ResultScreen />}
       {phase === 'closing' && <ClosingScreen />}

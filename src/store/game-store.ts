@@ -3,7 +3,7 @@ import { getCustomerById, getAllCustomerIds } from './game-data'
 
 // ===== 类型定义 =====
 export type EmotionType = 'sadness' | 'anger' | 'joy' | 'fear' | 'nostalgia' | 'guilt'
-export type GamePhase = 'hub' | 'dialog' | 'appraisal' | 'trading' | 'result' | 'storage' | 'closing'
+export type GamePhase = 'hub' | 'dialog' | 'tuning' | 'purify' | 'trading' | 'result' | 'storage' | 'closing'
 export type TradeAction = 'buy' | 'refuse' | 'blackmail' | 'tamper'
 export type LogType = 'info' | 'success' | 'warning' | 'danger'
 
@@ -98,14 +98,37 @@ interface GameState {
   dialogIndex: number
   revealedTruth: boolean
 
-  // 鉴定状态 - 碎片拼图
-  puzzleGrid: number[][]        // 当前排列，0=空位
-  puzzleSize: number            // 网格大小 (3)
-  puzzleRound: number           // 当前轮次 (1~shellTotal)
-  puzzleShellTotal: number      // 总外壳层数
-  puzzleShellRemaining: number  // 剩余外壳
-  puzzleMoves: number           // 当前轮移动步数
-  puzzleBestMoves: number       // 最佳轮步数（取最低）
+  // 鉴定状态 — 脑波调频 (Phase 1)
+  tuningTargetFreq: number       // 基准波频率 (0-100)
+  tuningTargetAmp: number        // 基准波振幅 (0-100)
+  tuningProbeFreq: number        // 探针波频率 (0-100)
+  tuningProbeAmp: number         // 探针波振幅 (0-100)
+  tuningMatchProgress: number    // 匹配进度 (0-100)
+  tuningStableFrames: number     // 稳定帧数 (需达180帧=3秒)
+  tuningIsActive: boolean        // 是否已接入
+  tuningDifficulty: number       // 基准波漂移幅度 (0-5)
+  tuningPhase: number            // 基准波当前相位偏移
+  tuningBestProgress: number     // 最佳匹配进度
+
+  // 鉴定状态 — 光影显形 (Phase 2)
+  purifyImpurities: Array<{
+    id: string
+    x: number; y: number         // 位置百分比 (0-100)
+    size: number                 // 半径
+    health: number               // 当前生命 (0-100)
+    maxHealth: number
+    type: 'tar' | 'mold'         // 视觉类型
+    speed: number                // 向核心移动速度
+  }>
+  purifyLanternActive: boolean
+  purifyLanternX: number
+  purifyLanternY: number
+  purifyCoreHealth: number       // 核心物体生命 (0-100)
+  purifyTotalImpurities: number
+  purifyClearedImpurities: number
+  purifySceneDesc: string        // 记忆场景描述
+
+  // 鉴定结果
   appraisalPurity: number
   appraisalCompleteness: number
 
@@ -137,9 +160,19 @@ interface GameState {
   dismissCustomer: () => void
   closeShop: () => void
   advanceDialog: (choiceIndex?: number) => void
-  initPuzzle: () => void
-  moveFragment: (row: number, col: number) => void
-  completeAppraisal: () => void
+  // 脑波调频
+  initTuning: () => void
+  updateTuningKnobs: (freq: number, amp: number) => void
+  startTuningConnect: () => void
+  stopTuningConnect: () => void
+  tickTuning: (deltaMs: number) => void
+  completeTuning: () => void
+  // 光影显形
+  initPurify: () => void
+  updateLantern: (x: number, y: number, active: boolean) => void
+  tickPurify: (deltaMs: number) => void
+  completePurify: () => void
+  // 交易
   bargain: () => void
   setNegotiatedPrice: (price: number) => void
   executeTrade: (action: TradeAction) => void
@@ -165,13 +198,26 @@ export const useGameStore = create<GameState>((set, get) => ({
   dialogIndex: 0,
   revealedTruth: false,
 
-  puzzleGrid: [],
-  puzzleSize: 3,
-  puzzleRound: 0,
-  puzzleShellTotal: 0,
-  puzzleShellRemaining: 0,
-  puzzleMoves: 0,
-  puzzleBestMoves: 0,
+  tuningTargetFreq: 50,
+  tuningTargetAmp: 50,
+  tuningProbeFreq: 25,
+  tuningProbeAmp: 25,
+  tuningMatchProgress: 0,
+  tuningStableFrames: 0,
+  tuningIsActive: false,
+  tuningDifficulty: 2,
+  tuningPhase: 0,
+  tuningBestProgress: 0,
+
+  purifyImpurities: [],
+  purifyLanternActive: false,
+  purifyLanternX: 50,
+  purifyLanternY: 50,
+  purifyCoreHealth: 100,
+  purifyTotalImpurities: 0,
+  purifyClearedImpurities: 0,
+  purifySceneDesc: '',
+
   appraisalPurity: 0,
   appraisalCompleteness: 100,
 
@@ -216,20 +262,34 @@ export const useGameStore = create<GameState>((set, get) => ({
     const customer = getCustomerById(customerId)
     if (!customer) return
 
-    const shellTotal = 1 + Math.floor(customer.memory.corruptionLevel / 20)
+    const corruption = customer.memory.corruptionLevel
+    const difficulty = 1 + Math.floor(corruption / 20)
+    const targetFreq = 25 + Math.floor(Math.random() * 51)
+    const targetAmp = 25 + Math.floor(Math.random() * 51)
 
     set({
       phase: 'dialog',
       currentCustomer: customer,
       dialogIndex: 0,
       revealedTruth: false,
-      puzzleGrid: [],
-      puzzleSize: 3,
-      puzzleRound: 0,
-      puzzleShellTotal: shellTotal,
-      puzzleShellRemaining: shellTotal,
-      puzzleMoves: 0,
-      puzzleBestMoves: 0,
+      tuningTargetFreq: targetFreq,
+      tuningTargetAmp: targetAmp,
+      tuningProbeFreq: 25,
+      tuningProbeAmp: 25,
+      tuningMatchProgress: 0,
+      tuningStableFrames: 0,
+      tuningIsActive: false,
+      tuningDifficulty: difficulty,
+      tuningPhase: Math.random() * Math.PI * 2,
+      tuningBestProgress: 0,
+      purifyImpurities: [],
+      purifyLanternActive: false,
+      purifyLanternX: 50,
+      purifyLanternY: 50,
+      purifyCoreHealth: 100,
+      purifyTotalImpurities: 0,
+      purifyClearedImpurities: 0,
+      purifySceneDesc: '',
       appraisalPurity: customer.memory.purity,
       appraisalCompleteness: 100,
       negotiatedPrice: 0,
@@ -285,9 +345,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const currentStep = currentCustomer.dialog[dialogIndex]
     if (!currentStep) {
-      // Dialog ended, move to appraisal
-      set({ phase: 'appraisal' })
-      get().addLog('开始鉴定记忆...', 'info')
+      // Dialog ended, move to brainwave tuning
+      set({ phase: 'tuning' })
+      get().addLog('神经链接已建立，开始脑波调频...', 'info')
       return
     }
 
@@ -312,101 +372,181 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  initPuzzle: () => {
-    const state = get()
-    const round = state.puzzleRound + 1
-    if (round > state.puzzleShellTotal) return
-
-    const size = state.puzzleSize
-    const solved: number[][] = []
-    let val = 1
-    for (let r = 0; r < size; r++) {
-      solved[r] = []
-      for (let c = 0; c < size; c++) {
-        solved[r][c] = (r === size - 1 && c === size - 1) ? 0 : val++
-      }
-    }
-    let grid = solved.map((row) => [...row])
-    let er = size - 1, ec = size - 1
-    const moves = 40 + Math.floor(Math.random() * 40)
-    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
-    let lr = -1, lc = -1
-    for (let m = 0; m < moves; m++) {
-      const valid: [number, number][] = []
-      for (const [dr, dc] of dirs) {
-        const nr = er + dr, nc = ec + dc
-        if (nr >= 0 && nr < size && nc >= 0 && nc < size && !(nr === lr && nc === lc)) {
-          valid.push([nr, nc])
-        }
-      }
-      const [nr, nc] = valid[Math.floor(Math.random() * valid.length)]
-      grid[er][ec] = grid[nr][nc]
-      grid[nr][nc] = 0
-      lr = er; lc = ec
-      er = nr; ec = nc
-    }
-
-    set({ puzzleGrid: grid, puzzleRound: round, puzzleMoves: 0 })
-    get().addLog(`第 ${round} 层记忆碎片已打乱，请重组`, 'info')
+  // ===== 脑波调频 =====
+  initTuning: () => {
+    set({
+      tuningProbeFreq: 25,
+      tuningProbeAmp: 25,
+      tuningMatchProgress: 0,
+      tuningStableFrames: 0,
+      tuningIsActive: false,
+      tuningBestProgress: 0,
+      tuningPhase: Math.random() * Math.PI * 2,
+    })
   },
 
-  moveFragment: (row, col) => {
+  updateTuningKnobs: (freq, amp) => {
+    set({ tuningProbeFreq: Math.max(0, Math.min(100, freq)), tuningProbeAmp: Math.max(0, Math.min(100, amp)) })
+  },
+
+  startTuningConnect: () => set({ tuningIsActive: true }),
+  stopTuningConnect: () => set({ tuningIsActive: false, tuningMatchProgress: 0, tuningStableFrames: 0 }),
+
+  tickTuning: (deltaMs) => {
     const state = get()
-    const grid = state.puzzleGrid.map((r) => [...r])
-    const size = state.puzzleSize
-    let er = -1, ec = -1
-    for (let r = 0; r < size; r++)
-      for (let c = 0; c < size; c++)
-        if (grid[r][c] === 0) { er = r; ec = c }
-    const dr = Math.abs(row - er), dc = Math.abs(col - ec)
-    if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-      grid[er][ec] = grid[row][col]
-      grid[row][col] = 0
-      const newMoves = state.puzzleMoves + 1
-      set({ puzzleGrid: grid, puzzleMoves: newMoves })
+    if (!state.tuningIsActive) return
 
-      let val = 1, solved = true
-      for (let r = 0; r < size && solved; r++)
-        for (let c = 0; c < size && solved; c++) {
-          const exp = (r === size - 1 && c === size - 1) ? 0 : val++
-          if (grid[r][c] !== exp) solved = false
+    // 基准波随时间轻微漂移（模拟呼吸感）
+    const drift = state.tuningDifficulty * 0.3
+    const newPhase = state.tuningPhase + deltaMs * 0.001 * (0.5 + state.tuningDifficulty * 0.15)
+    const driftFreq = Math.sin(newPhase * 1.7) * drift
+    const driftAmp = Math.cos(newPhase * 1.3) * drift
+    const effectiveTargetFreq = state.tuningTargetFreq + driftFreq
+    const effectiveTargetAmp = state.tuningTargetAmp + driftAmp
+
+    // 计算匹配度
+    const freqDiff = Math.abs(state.tuningProbeFreq - effectiveTargetFreq)
+    const ampDiff = Math.abs(state.tuningProbeAmp - effectiveTargetAmp)
+    const freqMatch = Math.max(0, 100 - freqDiff * 2.5)
+    const ampMatch = Math.max(0, 100 - ampDiff * 2.5)
+    const newProgress = Math.round((freqMatch + ampMatch) / 2)
+
+    const best = Math.max(state.tuningBestProgress, newProgress)
+    const stableFrames = newProgress >= 90 ? state.tuningStableFrames + 1 : 0
+
+    set({
+      tuningMatchProgress: newProgress,
+      tuningStableFrames: stableFrames,
+      tuningPhase: newPhase,
+      tuningBestProgress: best,
+    })
+  },
+
+  completeTuning: () => {
+    const state = get()
+    const tuningScore = state.tuningBestProgress
+    const purityBonus = Math.round(tuningScore * 0.25)
+    const newPurity = Math.min(100, state.appraisalPurity + purityBonus)
+
+    // 生成净化阶段的杂质（基于记忆腐化程度）
+    const corruption = state.currentCustomer?.memory.corruptionLevel ?? 50
+    const impurityCount = 2 + Math.floor(corruption / 20)
+    const impurities: GameState['purifyImpurities'] = []
+    const types: Array<'tar' | 'mold'> = ['tar', 'mold']
+    for (let i = 0; i < impurityCount; i++) {
+      impurities.push({
+        id: `imp-${i}`,
+        x: 15 + Math.random() * 70,
+        y: 15 + Math.random() * 70,
+        size: 8 + Math.random() * 10,
+        health: 100,
+        maxHealth: 100,
+        type: types[Math.floor(Math.random() * types.length)],
+        speed: 0.3 + Math.random() * 0.7,
+      })
+    }
+
+    set({
+      phase: 'purify',
+      appraisalPurity: newPurity,
+      purifyImpurities: impurities,
+      purifyCoreHealth: 100,
+      purifyTotalImpurities: impurityCount,
+      purifyClearedImpurities: 0,
+      purifyLanternActive: false,
+      purifyLanternX: 50,
+      purifyLanternY: 50,
+      purifySceneDesc: state.currentCustomer?.memory.description ?? '',
+    })
+    get().addLog(`调频完成！匹配度 ${tuningScore}%，纯度 +${purityBonus}%`, 'success')
+    get().addLog(`检测到 ${impurityCount} 处记忆杂质，启动光影净化...`, 'info')
+  },
+
+  // ===== 光影显形 =====
+  initPurify: () => {},
+
+  updateLantern: (x, y, active) => {
+    set({ purifyLanternX: x, purifyLanternY: y, purifyLanternActive: active })
+  },
+
+  tickPurify: (deltaMs) => {
+    const state = get()
+    if (state.phase !== 'purify') return
+    const impurities = state.purifyImpurities.map((imp) => ({ ...imp }))
+    let coreHealth = state.purifyCoreHealth
+    const dt = deltaMs / 1000
+
+    let newCleared = 0
+    for (const imp of impurities) {
+      if (imp.health <= 0) continue
+
+      // 检查是否在灯笼范围内
+      if (state.purifyLanternActive) {
+        const dx = imp.x - state.purifyLanternX
+        const dy = imp.y - state.purifyLanternY
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const lanternRadius = 22
+        if (dist < lanternRadius) {
+          // 灼烧：持续扣血
+          imp.health = Math.max(0, imp.health - 55 * dt)
+          if (imp.health <= 0) newCleared++
+        } else {
+          // 回血
+          imp.health = Math.min(imp.maxHealth, imp.health + 35 * dt)
         }
+      } else {
+        // 灯笼未激活，缓慢回血
+        imp.health = Math.min(imp.maxHealth, imp.health + 15 * dt)
+      }
 
-      if (solved) {
-        const newRemaining = Math.max(0, state.puzzleShellRemaining - 1)
-        const purityBonus = 8 + Math.max(0, 12 - Math.floor(newMoves / 5))
-        const newBest = state.puzzleBestMoves === 0 ? newMoves : Math.min(state.puzzleBestMoves, newMoves)
-        set({
-          puzzleShellRemaining: newRemaining,
-          puzzleBestMoves: newBest,
-          appraisalPurity: Math.min(100, state.appraisalPurity + purityBonus),
-        })
-        get().addLog(`碎片重组成功！+${purityBonus}% 纯度`, 'success')
-        if (newRemaining <= 0 && !state.revealedTruth) {
-          set({ revealedTruth: true })
-          get().addLog('全部外壳解码完成！隐藏情感已揭示', 'success')
+      // 存活杂质向核心物体缓慢移动
+      if (imp.health > 0) {
+        const coreX = 50, coreY = 50
+        const dx = coreX - imp.x
+        const dy = coreY - imp.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist > 5) {
+          imp.x += (dx / dist) * imp.speed * dt
+          imp.y += (dy / dist) * imp.speed * dt
+        }
+        // 到达核心则造成伤害
+        if (dist < 8) {
+          coreHealth = Math.max(0, coreHealth - 8 * dt)
         }
       }
     }
+
+    const totalCleared = state.purifyClearedImpurities + newCleared
+    const allCleared = totalCleared >= state.purifyTotalImpurities
+
+    set({
+      purifyImpurities: impurities,
+      purifyCoreHealth: coreHealth,
+      purifyClearedImpurities: totalCleared,
+    })
+
+    if (allCleared && !state.revealedTruth) {
+      set({ revealedTruth: true })
+      get().addLog('全部杂质已净化！隐藏情感已揭示', 'success')
+    }
   },
 
-  completeAppraisal: () => {
+  completePurify: () => {
     const state = get()
     const purity = state.appraisalPurity
-    const shellRatio = state.puzzleShellTotal > 0
-      ? (state.puzzleShellTotal - state.puzzleShellRemaining) / state.puzzleShellTotal
+    const purifyRatio = state.purifyTotalImpurities > 0
+      ? state.purifyClearedImpurities / state.purifyTotalImpurities
       : 1
-    const efficiency = state.puzzleBestMoves > 0 ? Math.max(0.5, 1 - (state.puzzleBestMoves - 10) * 0.02) : 0.8
+    const coreBonus = state.purifyCoreHealth / 100
     const completeness = Math.round(
-      Math.min(100, state.appraisalCompleteness * (0.5 + shellRatio * 0.3 + efficiency * 0.2))
+      Math.min(100, state.appraisalCompleteness * (0.4 + purifyRatio * 0.4 + coreBonus * 0.2))
     )
     const rarity = state.currentCustomer?.memory.rarity ?? 1
     const marketRate = 0.8 + Math.random() * 0.4
     const basePrice = state.currentCustomer?.memory.basePrice ?? 100
     const price = Math.round((purity / 100) * (completeness / 100) * rarity * basePrice * marketRate)
 
-    // 拼图表现降低顾客防线：完成度越高、步数越少，防线越低
-    const defenseReduction = Math.round(shellRatio * 25 + efficiency * 20)
+    const defenseReduction = Math.round(purifyRatio * 30 + coreBonus * 15)
     const newDefense = Math.max(5, (state.currentCustomer?.defense ?? 50) - defenseReduction)
     const updatedCustomer = state.currentCustomer
       ? { ...state.currentCustomer, defense: newDefense }

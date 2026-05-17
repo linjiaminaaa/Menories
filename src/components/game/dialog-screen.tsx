@@ -43,7 +43,7 @@ export function DialogScreen() {
   // 鉴定前的最后一步
   useEffect(() => {
     if (!currentStep && currentCustomer && dialogIndex >= (currentCustomer.dialog.length ?? 0)) {
-      setPhase('appraisal')
+      setPhase('tuning')
     }
   }, [dialogIndex, currentStep, currentCustomer, setPhase])
 
@@ -192,7 +192,7 @@ export function DialogScreen() {
               }}
               onClick={() => {
                 if (isLastStep) {
-                  setPhase('appraisal')
+                  setPhase('tuning')
                 } else {
                   advanceDialog()
                 }

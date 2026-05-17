@@ -1,27 +1,47 @@
 /* 记忆典当行 - 游戏动画与特效样式 */
 
-/* 记忆球辉光脉冲 */
-@keyframes orb-pulse {
+/* 波形同步脉冲 */
+@keyframes sync-pulse {
   0%, 100% {
-    box-shadow: 0 0 20px var(--orb-color, #4488ff), 0 0 40px var(--orb-color, #4488ff), 0 0 60px var(--orb-color, #4488ff);
-    transform: scale(1);
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.5), inset 0 0 10px rgba(0, 255, 136, 0.2);
   }
   50% {
-    box-shadow: 0 0 30px var(--orb-color, #4488ff), 0 0 60px var(--orb-color, #4488ff), 0 0 90px var(--orb-color, #4488ff);
-    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.8), inset 0 0 25px rgba(0, 255, 136, 0.35);
   }
 }
 
-/* 记忆球内部流动 */
-@keyframes orb-flow {
+/* 杂质灼烧粒子 */
+@keyframes burn-particle {
   0% {
-    background-position: 0% 50%;
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
   }
   50% {
-    background-position: 100% 50%;
+    opacity: 0.6;
+    transform: translate(-4px, -8px) scale(1.5);
   }
   100% {
-    background-position: 0% 50%;
+    opacity: 0;
+    transform: translate(-8px, -16px) scale(0);
+  }
+}
+
+/* CRT 噪点闪烁 */
+@keyframes noise-flicker {
+  0%, 100% { opacity: 0.7; }
+  20% { opacity: 0.5; }
+  40% { opacity: 0.8; }
+  60% { opacity: 0.4; }
+  80% { opacity: 0.7; }
+}
+
+/* 旋钮刻度发光 */
+@keyframes knob-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--knob-color, #44ccff);
+  }
+  50% {
+    box-shadow: 0 0 12px var(--knob-color, #44ccff);
   }
 }
 
@@ -171,13 +191,8 @@
 }
 
 /* 应用类名 */
-.orb-glow {
-  animation: orb-pulse 3s ease-in-out infinite;
-}
-
-.orb-flow-bg {
-  background-size: 200% 200%;
-  animation: orb-flow 4s ease infinite;
+.sync-glow {
+  animation: sync-pulse 0.5s ease-in-out infinite;
 }
 
 .impurity-alive {
@@ -186,6 +201,14 @@
 
 .impurity-dying {
   animation: impurity-remove 0.4s ease-out forwards;
+}
+
+.noise-overlay {
+  animation: noise-flicker 0.15s infinite;
+}
+
+.knob-active {
+  animation: knob-glow 1.5s ease-in-out infinite;
 }
 
 .neon-text {
@@ -396,12 +419,12 @@
 
 /* 滑块已内置 py-4 触摸区域，无需额外包装 */
 
-/* 记忆球 - 移动端优化 */
-.orb-container {
+/* 示波器画布容器 */
+.oscope-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 0;
+  padding: 8px 0;
 }
 
 /* Tab 切换按钮 - 移动端 */
@@ -447,104 +470,15 @@
 }
 
 /* ============================================
-   共鸣舱 — CRT/涟漪动画
+   调频与净化 — 动画特效
    ============================================ */
 
-/* 共鸣舱外壳 */
-.resonance-chamber {
+/* 示波器容器 */
+.oscope-container {
   position: relative;
-  width: 240px;
-  height: 240px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #0a0a12 40%, #141420 70%, #1a1a2e 100%);
-  border: 2px solid #2a2a40;
-  box-shadow: inset 0 0 60px rgba(0, 240, 255, 0.05), 0 0 30px rgba(0, 240, 255, 0.1);
-}
-
-/* 共鸣环（外圈点击区域） */
-.resonance-ring {
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 2px dashed #2a2a40;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.resonance-ring.hit-zone {
-  border-color: #00ff88;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4), inset 0 0 20px rgba(0, 255, 136, 0.1);
-}
-
-.resonance-ring.noise-zone {
-  border-color: #ff3344;
-  box-shadow: 0 0 20px rgba(255, 51, 68, 0.5), inset 0 0 20px rgba(255, 51, 68, 0.1);
-}
-
-/* 涟漪脉冲动画 */
-@keyframes ripple-pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(0.1);
-    opacity: 0.9;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.15);
-    opacity: 0;
-  }
-}
-
-@keyframes noise-pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(0.1);
-    opacity: 0.8;
-    border-color: #ff3344;
-  }
-  50% {
-    opacity: 0.5;
-    border-color: #ff0066;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.15);
-    opacity: 0;
-    border-color: #ff3344;
-  }
-}
-
-.ripple-wave {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 240, 255, 0.4);
-  transform: translate(-50%, -50%) scale(0.1);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.ripple-wave.active {
-  animation: ripple-pulse 2s ease-out forwards;
-}
-
-.ripple-wave.noise {
-  border-color: #ff3344;
-  animation: noise-pulse 2s ease-out forwards;
-}
-
-/* 记忆球核心脉动 */
-@keyframes core-beat {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 30px var(--core-color, #4488ff), 0 0 60px var(--core-color, #4488ff);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow: 0 0 50px var(--core-color, #4488ff), 0 0 90px var(--core-color, #4488ff);
-  }
-}
-
-.resonance-core {
-  animation: core-beat 2s ease-in-out infinite;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 /* CRT 扫描线增强 */
